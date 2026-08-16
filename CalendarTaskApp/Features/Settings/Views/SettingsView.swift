@@ -2,13 +2,29 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject var viewModel: SettingsViewModel
+    @ObservedObject var backupService: BackupService
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
-        Form {
-            Section("一般") { Text("基本設定") }
-            Section("カレンダー") { Text("表示と連携") }
-            Section("通知") { Text("通知設定（今後対応）") }
-            Section("データ") { Text("保存と同期（今後対応）") }
-            Section("外観") { Toggle("システム設定を使用", isOn: $viewModel.useSystemAppearance).onChange(of: viewModel.useSystemAppearance) { _ in viewModel.updateAppearance() } }
-        }.navigationTitle("設定")
+        List {
+            Section("設定") {
+                NavigationLink("一般") { GeneralSettingsView() }
+                NavigationLink("カレンダー") { CalendarSettingsView() }
+                NavigationLink("タスク") { TaskSettingsView() }
+                NavigationLink("予定") { EventSettingsView() }
+                NavigationLink("Quick Add") { QuickAddSettingsView() }
+                NavigationLink("通知") { NotificationSettingsView(viewModel: viewModel) }
+                NavigationLink("外観") { AppearanceSettingsView() }
+            }
+            Section("整理") {
+                NavigationLink("プロジェクト") { ProjectManagementView() }
+                LabeledContent("タグ", value: "今後対応").foregroundStyle(.secondary)
+            }
+            Section("情報") {
+                NavigationLink("データ") { DataSettingsView(service: backupService) }
+                NavigationLink("Widget") { WidgetSettingsView() }
+                NavigationLink("このアプリについて") { AboutView() }
+            }
+        }.navigationTitle("設定").task { await viewModel.loadNotificationStatus() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await viewModel.loadNotificationStatus() } } }
     }
 }

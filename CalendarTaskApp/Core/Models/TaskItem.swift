@@ -10,6 +10,9 @@ struct TaskItem: Identifiable, Codable, Hashable, Sendable {
     var isCompleted: Bool
     var completedAt: Date?
     var priority: TaskPriority
+    var reminderDate: Date?
+    var recurrenceRule: RecurrenceRule?
+    var projectID: UUID?
     var category: TaskCategory?
     var tags: [AppTag]
     let createdAt: Date
