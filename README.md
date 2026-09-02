@@ -1,53 +1,38 @@
 # CalendarTaskApp
 
-## アプリ概要
+カレンダー、タスク、日ごとのメモを一つの手帳として扱う iOS 17+ アプリです。SwiftUI で構築され、データは SwiftData に保存されます。
 
-カレンダーとタスク管理を統合した iOS アプリです。現在は、今後の機能追加を安全に行うためのベースプロジェクトです。
+## 実装済みの主な機能
 
-## 現在のフェーズ
+- **今日**: 選択日の予定・タスクをまとめたタイムライン、日別メモ、完了操作。
+- **カレンダー**: 月・週・日表示、日付選択、予定・タスク・メモの確認と編集。
+- **タスク**: セクション、検索、並べ替え、完了状態、繰り返し、優先度、プロジェクト分類。
+- **統一編集フロー**: タスク・予定・メモの作成、編集、削除、未保存変更の確認。
+- **QuickAdd**: 「明日 18:00 病院」「予定: 8/20 打ち合わせ」のような入力を解析し、プレビュー、即時保存、詳細編集へ接続。
+- **設定**: 初期画面、カレンダー・タスク表示、作成時の既定値、QuickAdd、通知、外観、触覚フィードバック、プロジェクト、バックアップ。
+- **通知と繰り返し**: UserNotifications によるリマインダーと occurrence 単位の繰り返しタスク完了管理。
+- **Widget**: small / medium の「今日の手帳」で当日の予定・タスクを表示し、App Intent でタスクの完了を切り替え。
 
-基盤構築段階です。SwiftUI、MVVM、`NavigationStack`、`TabView`、Swift Concurrency を使い、外部 SDK や永続化には依存していません。
-
-## アーキテクチャ
+## 技術構成
 
 ```text
-View
-  ↓ user action / observed state
-ViewModel
-  ↓ shared application state
-Store
-  ↓ persistence abstraction
-Repository
-  ↓
-Data Source (currently in-memory SampleData)
+View → ViewModel → Store → Repository → SwiftData
 ```
 
-依存関係は `AppDependencies` で組み立てます。View と ViewModel は具体的な保存実装を生成しません。
+依存関係は `AppDependencies` で組み立てます。本番は SwiftData、設定値は UserDefaults を利用し、テスト用に InMemory Repository と差し替え可能です。アプリと Widget は、両 target の署名設定を行ったうえで App Group の SwiftData store を共有する設計です。
 
-## フォルダ構成
+主要ディレクトリは次のとおりです。
 
-- `CalendarTaskApp/App`: アプリのエントリポイント、ルート Tab、依存性注入。
-- `CalendarTaskApp/Core`: Feature 間で共有するモデル、Repository protocol、Store、日付 Service。
-- `CalendarTaskApp/Features`: Home / Calendar / Tasks / Settings ごとの View と ViewModel。
-- `CalendarTaskApp/Data`: Repository の具体実装、分離可能なサンプルデータ。`Local` と `Remote` は将来実装の境界。
-- `CalendarTaskApp/DesignSystem`: 複数 Feature で本当に共有する UI の配置先。
-- `CalendarTaskApp/Utilities`: UI・ドメインに属さない小さな共通処理の配置先。
-- `CalendarTaskApp/Resources`: Asset Catalog とローカライズリソース。
-- `CalendarTaskAppTests`: Repository、ViewModel、日付処理の Unit Test。
+- `CalendarTaskApp/App`: 起動と依存性注入、ルート UI。
+- `CalendarTaskApp/Core`: モデル、Repository 契約、Store、Service、バックアップ。
+- `CalendarTaskApp/Data`: SwiftData と Repository 実装、InMemory 実装、SampleData。
+- `CalendarTaskApp/Features`: Home / Calendar / Tasks / Settings / QuickAdd / Editing。
+- `CalendarTaskApp/DesignSystem`, `Utilities`, `Resources`: 共有スタイル、汎用処理、Asset。
+- `CalendarTaskWidget`: Widget と App Intent。
+- `CalendarTaskAppTests`: unit test。
 
-## データフロー
+## 開発者向け情報
 
-起動時に `AppDependencies` が InMemory Repository を Store に注入します。各 ViewModel は Store を受け取り、非同期でロードや絞り込みを行います。View は公開された画面状態だけを描画します。
+Xcode で `CalendarTaskApp.xcodeproj` を開き、`CalendarTaskApp` scheme を実行してください。Widget を端末で利用する場合は、アプリと Widget の両 target で同じ App Group を有効にし、署名設定に合う `APP_GROUP_IDENTIFIER` を指定する必要があります。詳細は `CalendarTaskWidget/README.md` を参照してください。
 
-## 拡張ガイド
-
-- **SwiftData**: `Data/Local/SwiftData` にモデル変換と Data Source、`Data/Repositories` に protocol 実装を追加し、`AppDependencies` の生成先だけを差し替えます。
-- **CloudKit / Firebase**: `Data/Remote` に SDK 境界と Repository 実装を追加し、DI を差し替えます。View は変更しません。
-- **EventKit**: `Core/Services` に抽象 protocol、`Data` に EventKit adapter を追加します。外部イベントは `externalEventID` で対応付けます。
-- **UserNotifications**: Service protocol と実装を追加し、必要な Store / ViewModel に注入します。
-- **WidgetKit / App Intents**: Core の値型と Repository 境界を共有し、独立した Target から利用します。
-- **新しい Feature**: `Features/<Name>/Views` と `ViewModels` を作り、Feature 固有型はその配下に置きます。複数 Feature で必要になった概念だけ Core / DesignSystem に昇格させます。
-
-## 今回含めないもの
-
-Firebase、CloudKit、EventKit、UserNotifications、WidgetKit、App Intents、外部 API、本格的な永続化は意図的に未実装です。
+設計規約と変更手順は最初に [`AGENTS.md`](AGENTS.md) を読み、詳しい依存関係は [`docs/architecture.md`](docs/architecture.md) を参照してください。
