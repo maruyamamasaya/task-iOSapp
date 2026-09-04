@@ -99,6 +99,7 @@ struct AppearanceSettingsView: View {
 private struct ThemePreviewCard: View {
     let theme: AppTheme
     let isSelected: Bool
+    @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         ZStack {
             AppThemeBackground(theme: theme)
@@ -111,12 +112,15 @@ private struct ThemePreviewCard: View {
                 }
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(isSelected ? theme.accent : .secondary)
-            }.padding(16)
+            }
+            .padding(16)
+            .background(theme.surfaceColor(for: colorScheme).opacity(theme.surfaceOpacity), in: RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous))
+            .padding(7)
         }
         .frame(minHeight: 82)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay { RoundedRectangle(cornerRadius: 18).stroke(isSelected ? theme.accent : Color.secondary.opacity(0.2), lineWidth: isSelected ? 2 : 1) }
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(isSelected ? theme.accent : Color.secondary.opacity(0.16), lineWidth: isSelected ? 2 : 0.7) }
+        .shadow(color: isSelected ? theme.accent.opacity(0.13) : .black.opacity(0.05), radius: isSelected ? 12 : 6, y: 4)
     }
 }
 

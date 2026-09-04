@@ -21,11 +21,12 @@ struct CalendarView: View {
                                       isInDisplayedMonth: viewModel.isInDisplayedMonth,
                                       hasEvent: viewModel.hasEvents, hasIncompleteTask: viewModel.hasIncompleteTasks,
                                       projectIDs: viewModel.projectIDs) { date in Task { await viewModel.select(date) } }
-                    Divider()
+                        .themedSurface(padding: 14)
                     SelectedDaySummaryView(date: viewModel.selectedDate, events: viewModel.selectedEvents,
                                            tasks: viewModel.selectedTasks, note: viewModel.selectedNote,
                                            editEvent: eventActions.edit, editTask: taskActions.edit,
                                            editNote: { editorRoute = .note(viewModel.selectedNote, viewModel.selectedDate) })
+                        .themedSurface()
                 } else {
                     WeekCalendarView(dates: viewModel.weekDates, selectedDate: viewModel.selectedDate,
                                      allDayEvents: viewModel.selectedAllDayEvents, allDayTasks: viewModel.selectedAllDayTasks,

@@ -3,6 +3,8 @@ import SwiftUI
 struct TaskListView: View {
     @StateObject var viewModel: TaskListViewModel
     @State private var route: EditorRoute?
+    @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         VStack(spacing: 0) {
             sectionBar
@@ -22,6 +24,7 @@ struct TaskListView: View {
                                                          assignProject: { id in Task { await viewModel.assign(task, to: id) } },
                                                          delete: { Task { await viewModel.delete(id: task.id) } }))
                         .listRowSeparatorTint(.secondary.opacity(0.25))
+                        .listRowBackground(settings.theme.surfaceColor(for: colorScheme).opacity(settings.theme.surfaceOpacity))
                 }.listStyle(.plain)
             }
         }

@@ -184,7 +184,14 @@ struct DailyNoteSection: View {
 
 struct PlannerSection<Content: View>: View {
     let title: String; let symbol: String; @ViewBuilder let content: Content
-    var body: some View { VStack(alignment: .leading, spacing: 14) { Label(title, systemImage: symbol).font(.headline); Divider(); content } }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(title, systemImage: symbol).font(.headline).foregroundStyle(.primary)
+            Rectangle().fill(Color.accentColor.opacity(0.28)).frame(height: 1)
+            content
+        }
+        .themedSurface()
+    }
 }
 
 private struct PlannerEmptyText: View {
