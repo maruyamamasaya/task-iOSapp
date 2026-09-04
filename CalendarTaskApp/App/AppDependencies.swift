@@ -47,4 +47,12 @@ import SwiftData
             widgetRefreshService: widgetRefresh
         )
     }
+
+    func rescheduleNotificationsIfAuthorized() async {
+        guard await notificationService.authorizationStatus() == .authorized else { return }
+        await taskStore.load()
+        await calendarStore.load()
+        for task in taskStore.tasks { await notificationService.sync(task: task) }
+        for event in calendarStore.events { await notificationService.sync(event: event) }
+    }
 }

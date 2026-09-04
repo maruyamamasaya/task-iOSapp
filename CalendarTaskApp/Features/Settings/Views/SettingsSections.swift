@@ -75,7 +75,49 @@ struct NotificationSettingsView: View {
 
 struct AppearanceSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form { Section { Picker("外観", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented) } footer: { Text("将来、アクセントカラーや手帳テーマを追加できます。") } }.navigationTitle("外観") }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("明るさ").font(.headline)
+                    Picker("外観", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("手帳テーマ").font(.headline)
+                    ForEach(AppTheme.allCases) { theme in
+                        Button { settings.theme = theme } label: { ThemePreviewCard(theme: theme, isSelected: settings.theme == theme) }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(theme.rawValue)、\(theme.subtitle)")
+                            .accessibilityAddTraits(settings.theme == theme ? .isSelected : [])
+                    }
+                }
+            }.padding(20)
+        }.themedScreen().navigationTitle("外観")
+    }
+}
+
+private struct ThemePreviewCard: View {
+    let theme: AppTheme
+    let isSelected: Bool
+    var body: some View {
+        ZStack {
+            AppThemeBackground(theme: theme)
+            HStack(spacing: 14) {
+                Image(systemName: theme.symbol).font(.title2).foregroundStyle(theme.accent)
+                    .frame(width: 42, height: 42).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(theme.rawValue).font(.headline)
+                    Text(theme.subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(isSelected ? theme.accent : .secondary)
+            }.padding(16)
+        }
+        .frame(minHeight: 82)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay { RoundedRectangle(cornerRadius: 18).stroke(isSelected ? theme.accent : Color.secondary.opacity(0.2), lineWidth: isSelected ? 2 : 1) }
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+    }
 }
 
 struct BackupJSONDocument: FileDocument {

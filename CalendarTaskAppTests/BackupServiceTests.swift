@@ -18,7 +18,7 @@ import SwiftData
         let context = ModelContext(fixture.persistence.container)
         context.insert(ProjectEntity(project)); context.insert(TaskEntity(task)); context.insert(CalendarEventEntity(event))
         context.insert(DailyNoteEntity(note)); context.insert(TaskCompletionEntity(completion)); try context.save()
-        fixture.settings.appearance = .dark; fixture.settings.weekStartDay = .sunday; fixture.settings.defaultTaskPriority = .low
+        fixture.settings.appearance = .dark; fixture.settings.theme = .linen; fixture.settings.weekStartDay = .sunday; fixture.settings.defaultTaskPriority = .low
 
         let data = try fixture.service.exportData(now: now)
         let backup = try fixture.service.decodeAndValidate(data)
@@ -32,6 +32,7 @@ import SwiftData
         XCTAssertEqual(try restored.fetch(FetchDescriptor<ProjectEntity>()).first?.domain, project)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<TaskCompletionEntity>()).first?.domain.taskID, taskID)
         XCTAssertEqual(fixture.settings.appearance, .dark); XCTAssertEqual(fixture.settings.weekStartDay, .sunday)
+        XCTAssertEqual(fixture.settings.theme, .linen)
     }
 
     func testCorruptedAndUnknownSchemaAreRejected() throws {

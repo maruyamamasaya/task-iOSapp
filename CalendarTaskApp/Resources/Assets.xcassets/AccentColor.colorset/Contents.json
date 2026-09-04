@@ -1,1 +1,12 @@
-{"colors":[{"idiom":"universal"}],"info":{"author":"xcode","version":1}}
+{
+  "colors" : [
+    {
+      "filename" : "icontaskcal.jpeg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

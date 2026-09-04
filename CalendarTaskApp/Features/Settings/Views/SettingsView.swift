@@ -24,7 +24,7 @@ struct SettingsView: View {
                 NavigationLink("Widget") { WidgetSettingsView() }
                 NavigationLink("このアプリについて") { AboutView() }
             }
-        }.navigationTitle("設定").task { await viewModel.loadNotificationStatus() }
+        }.themedScreen().navigationTitle("設定").task { await viewModel.loadNotificationStatus() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await viewModel.loadNotificationStatus() } } }
     }
 }

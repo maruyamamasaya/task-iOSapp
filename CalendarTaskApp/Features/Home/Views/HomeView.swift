@@ -33,6 +33,7 @@ struct HomeView: View {
             }
             .padding(.horizontal, 24).padding(.vertical, 20)
         }
+        .themedScreen()
         .navigationTitle("今日").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { AddItemMenu(date: viewModel.selectedDate, route: $editorRoute) } }
         .sheet(item: $editorRoute) { route in

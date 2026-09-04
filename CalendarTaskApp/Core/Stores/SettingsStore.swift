@@ -15,6 +15,14 @@ enum DefaultReminderOption: String, CaseIterable, Identifiable {
     }
 }
 enum AppAppearance: String, CaseIterable, Identifiable { case system = "システム", light = "ライト", dark = "ダーク"; var id: Self { self } }
+enum AppTheme: String, CaseIterable, Identifiable {
+    case classic = "クラシック手帳"
+    case sakura = "さくら日和"
+    case linen = "ナチュラルリネン"
+    case midnight = "ミッドナイト"
+    case modern = "モダンノート"
+    var id: Self { self }
+}
 struct TaskCreationDefaults { let priority: TaskPriority; let isAllDay: Bool; let reminderDate: Date? }
 struct EventCreationDefaults { let startDate: Date; let endDate: Date; let reminderDate: Date? }
 
@@ -26,7 +34,7 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         static let taskAllDay = "settings.taskAllDay", completedAtBottom = "settings.completedAtBottom", taskSort = "settings.taskSort", taskSection = "settings.taskSection"
         static let eventHour = "settings.eventHour", eventDuration = "settings.eventDuration", quickType = "settings.quickType"
         static let quickSave = "settings.quickSave", quickPreview = "settings.quickPreview", reminder = "settings.reminder", appearance = "settings.appearance"
-        static let lastBackupDate = "settings.lastBackupDate"
+        static let theme = "settings.theme", lastBackupDate = "settings.lastBackupDate"
     }
     private let defaults: UserDefaults
     private var isLoading = true
@@ -50,6 +58,7 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
     @Published var quickAddAlwaysPreview: Bool { didSet { save(quickAddAlwaysPreview, Key.quickPreview) } }
     @Published var defaultReminder: DefaultReminderOption { didSet { save(defaultReminder.rawValue, Key.reminder) } }
     @Published var appearance: AppAppearance { didSet { save(appearance.rawValue, Key.appearance) } }
+    @Published var theme: AppTheme { didSet { save(theme.rawValue, Key.theme) } }
     @Published var lastBackupDate: Date? { didSet { if !isLoading { defaults.set(lastBackupDate, forKey: Key.lastBackupDate) } } }
 
     init(defaults: UserDefaults = .standard) {
@@ -65,7 +74,8 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         defaultEventDurationMinutes = defaults.object(forKey: Key.eventDuration) == nil ? 60 : defaults.integer(forKey: Key.eventDuration)
         quickAddDefaultType = Self.value(defaults, Key.quickType, .task); quickAddSaveImmediately = Self.bool(defaults, Key.quickSave, false)
         quickAddAlwaysPreview = Self.bool(defaults, Key.quickPreview, true); defaultReminder = Self.value(defaults, Key.reminder, .none)
-        appearance = Self.value(defaults, Key.appearance, .system); lastBackupDate = defaults.object(forKey: Key.lastBackupDate) as? Date; isLoading = false
+        appearance = Self.value(defaults, Key.appearance, .system); theme = Self.value(defaults, Key.theme, .classic)
+        lastBackupDate = defaults.object(forKey: Key.lastBackupDate) as? Date; isLoading = false
     }
     func taskCreationDefaults(referenceDate: Date) -> TaskCreationDefaults {
         TaskCreationDefaults(priority: defaultTaskPriority, isAllDay: newTasksAreAllDay, reminderDate: defaultReminder.date(relativeTo: referenceDate))

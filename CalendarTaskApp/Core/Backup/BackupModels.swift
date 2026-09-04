@@ -12,7 +12,7 @@ struct BackupSettings: Codable, Equatable {
     let defaultTaskPriority: String; let newTasksAreAllDay: Bool; let completedTasksAtBottom: Bool
     let defaultTaskSort: String; let initialTaskSection: String; let defaultEventStartHour: Int; let defaultEventDurationMinutes: Int
     let quickAddDefaultType: String; let quickAddSaveImmediately: Bool; let quickAddAlwaysPreview: Bool
-    let defaultReminder: String; let appearance: String
+    let defaultReminder: String; let appearance: String; let theme: String?
 }
 
 struct AppBackup: Codable, Equatable {
@@ -57,7 +57,7 @@ extension SettingsStore {
                        initialTaskSection: initialTaskSection.rawValue, defaultEventStartHour: defaultEventStartHour,
                        defaultEventDurationMinutes: defaultEventDurationMinutes, quickAddDefaultType: quickAddDefaultType.rawValue,
                        quickAddSaveImmediately: quickAddSaveImmediately, quickAddAlwaysPreview: quickAddAlwaysPreview,
-                       defaultReminder: defaultReminder.rawValue, appearance: appearance.rawValue)
+                       defaultReminder: defaultReminder.rawValue, appearance: appearance.rawValue, theme: theme.rawValue)
     }
     func validate(_ value: BackupSettings) throws {
         guard InitialAppTab(rawValue: value.initialTab) != nil else { throw BackupError.invalidSettings("initialTab") }
@@ -68,7 +68,8 @@ extension SettingsStore {
         guard SettingsTaskSection(rawValue: value.initialTaskSection) != nil else { throw BackupError.invalidSettings("initialTaskSection") }
         guard QuickAddDefaultType(rawValue: value.quickAddDefaultType) != nil else { throw BackupError.invalidSettings("quickAddDefaultType") }
         guard DefaultReminderOption(rawValue: value.defaultReminder) != nil else { throw BackupError.invalidSettings("defaultReminder") }
-        guard AppAppearance(rawValue: value.appearance) != nil, (0..<24).contains(value.defaultEventStartHour), value.defaultEventDurationMinutes > 0 else { throw BackupError.invalidSettings("appearance/event") }
+        guard AppAppearance(rawValue: value.appearance) != nil, value.theme.flatMap(AppTheme.init(rawValue:)) != nil || value.theme == nil,
+              (0..<24).contains(value.defaultEventStartHour), value.defaultEventDurationMinutes > 0 else { throw BackupError.invalidSettings("appearance/theme/event") }
     }
     func restore(_ value: BackupSettings) throws {
         try validate(value)
@@ -82,5 +83,6 @@ extension SettingsStore {
         defaultEventDurationMinutes = value.defaultEventDurationMinutes; quickAddDefaultType = QuickAddDefaultType(rawValue: value.quickAddDefaultType)!
         quickAddSaveImmediately = value.quickAddSaveImmediately; quickAddAlwaysPreview = value.quickAddAlwaysPreview
         defaultReminder = DefaultReminderOption(rawValue: value.defaultReminder)!; appearance = AppAppearance(rawValue: value.appearance)!
+        theme = value.theme.flatMap(AppTheme.init(rawValue:)) ?? .classic
     }
 }

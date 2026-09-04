@@ -36,6 +36,7 @@ struct CalendarView: View {
                 }
             }.padding(.horizontal, 20).padding(.vertical, 16)
         }
+        .themedScreen()
         .navigationTitle("カレンダー").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

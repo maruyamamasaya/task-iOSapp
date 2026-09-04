@@ -25,6 +25,7 @@ struct TaskListView: View {
                 }.listStyle(.plain)
             }
         }
+        .themedScreen()
         .navigationTitle("タスク")
         .searchable(text: $viewModel.searchText, prompt: "タイトル・メモを検索")
         .task { await viewModel.load() }
