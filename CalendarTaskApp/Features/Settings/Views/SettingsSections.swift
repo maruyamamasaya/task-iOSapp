@@ -3,28 +3,33 @@ import UniformTypeIdentifiers
 
 struct GeneralSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("起動") { Picker("初期タブ", selection: $settings.initialTab) { ForEach(InitialAppTab.allCases) { Text($0.rawValue).tag($0) } } }
         Section("表示と操作") {
             Toggle("今日に完了済みタスクを表示", isOn: $settings.showCompletedTasksToday)
             Toggle("完了済みタスクを初期表示", isOn: $settings.showCompletedTaskListInitially)
             Toggle("Haptic Feedback", isOn: $settings.hapticFeedbackEnabled)
         }
-    }.navigationTitle("一般") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("一般") }
 }
 
 struct CalendarSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("週") { Picker("週の開始", selection: $settings.weekStartDay) { ForEach(WeekStartDay.allCases) { Text($0.rawValue).tag($0) } } }
         Section("初期表示") { Picker("表示", selection: $settings.initialCalendarMode) { ForEach(InitialCalendarMode.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented) }
         Section("表示") { Toggle("今日を強調", isOn: $settings.highlightToday); Toggle("Project色ドット", isOn: $settings.showProjectColorDots) }
-    }.navigationTitle("カレンダー") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("カレンダー") }
 }
 
 struct TaskSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("新規タスク") {
             Picker("優先度", selection: $settings.defaultTaskPriority) { ForEach(TaskPriority.allCases, id: \.self) { Text($0.displayName).tag($0) } }
             Toggle("終日として作成", isOn: $settings.newTasksAreAllDay)
@@ -34,46 +39,54 @@ struct TaskSettingsView: View {
             Picker("並び替え", selection: $settings.defaultTaskSort) { ForEach(SettingsTaskSort.allCases) { Text($0.rawValue).tag($0) } }
             Picker("初期分類", selection: $settings.initialTaskSection) { ForEach(SettingsTaskSection.allCases) { Text($0.rawValue).tag($0) } }
         }
-    }.navigationTitle("タスク") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("タスク") }
 }
 
 struct EventSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("新規予定") {
             Picker("開始時刻", selection: $settings.defaultEventStartHour) { ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) } }
             Picker("所要時間", selection: $settings.defaultEventDurationMinutes) { ForEach([15, 30, 45, 60, 90, 120], id: \.self) { Text("\($0)分").tag($0) } }
         }
-    }.navigationTitle("予定") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("予定") }
 }
 
 struct QuickAddSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("入力") { Picker("デフォルト種類", selection: $settings.quickAddDefaultType) { ForEach(QuickAddDefaultType.allCases) { Text($0.rawValue).tag($0) } } }
         Section("解析後") {
             Toggle("解析後すぐ保存", isOn: $settings.quickAddSaveImmediately)
             Toggle("解析結果を必ず確認", isOn: $settings.quickAddAlwaysPreview)
             Text("確認が有効な場合はPreviewを優先します。").font(.caption).foregroundStyle(.secondary)
         }
-    }.navigationTitle("Quick Add") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("Quick Add") }
 }
 
 struct NotificationSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.openURL) private var openURL
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("権限") {
             LabeledContent("状態", value: viewModel.notificationStatus.rawValue)
             if viewModel.notificationStatus == .notDetermined { Button("通知を許可") { Task { await viewModel.requestNotificationPermission() } } }
             Button("iOS設定を開く") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
         }
         Section("新規項目のデフォルト") { Picker("通知", selection: $settings.defaultReminder) { ForEach(DefaultReminderOption.allCases) { Text($0.rawValue).tag($0) } } }
-    }.navigationTitle("通知").task { await viewModel.loadNotificationStatus() } }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("通知").task { await viewModel.loadNotificationStatus() } }
 }
 
 struct AppearanceSettingsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var settings: SettingsStore
     var body: some View {
         ScrollView {
@@ -87,7 +100,7 @@ struct AppearanceSettingsView: View {
                     ForEach(AppTheme.allCases) { theme in
                         Button { settings.theme = theme } label: { ThemePreviewCard(theme: theme, isSelected: settings.theme == theme) }
                             .buttonStyle(ThemedPressStyle())
-                            .accessibilityLabel("\(theme.rawValue)、\(theme.subtitle)")
+                            .accessibilityLabel("\(theme.rawValue)、\(theme.appearance(for: colorScheme).subtitle)")
                             .accessibilityAddTraits(settings.theme == theme ? .isSelected : [])
                     }
                 }
@@ -100,27 +113,28 @@ private struct ThemePreviewCard: View {
     let theme: AppTheme
     let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
+    private var palette: ThemeAppearance { theme.appearance(for: colorScheme) }
     var body: some View {
         ZStack {
             AppThemeBackground(theme: theme)
             HStack(spacing: 14) {
-                Image(systemName: theme.symbol).font(.title2).foregroundStyle(theme.accent)
-                    .frame(width: 42, height: 42).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                Image(systemName: theme.symbol).font(.title2).foregroundStyle(palette.accent)
+                    .frame(width: 42, height: 42).background(palette.control, in: RoundedRectangle(cornerRadius: palette.controlRadius))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(theme.rawValue).font(theme.headingFont(.headline))
-                    Text(theme.subtitle).font(.caption).foregroundStyle(.secondary)
+                    Text(theme.rawValue).font(theme.headingFont(.headline, for: colorScheme)).tracking(palette.headingTracking).foregroundStyle(palette.ink)
+                    Text(palette.subtitle).font(.caption).foregroundStyle(palette.mutedInk)
                 }
                 Spacer()
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(isSelected ? theme.accent : .secondary)
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(isSelected ? palette.accent : palette.mutedInk)
             }
             .padding(16)
-            .background(theme.surfaceColor(for: colorScheme).opacity(theme.surfaceOpacity), in: RoundedRectangle(cornerRadius: theme.cornerRadius, style: .continuous))
+            .background { ThemeSurface(theme: theme) }
             .padding(7)
         }
         .frame(minHeight: 82)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(isSelected ? theme.accent : Color.secondary.opacity(0.16), lineWidth: isSelected ? 2 : 0.7) }
-        .shadow(color: isSelected ? theme.accent.opacity(0.13) : .black.opacity(0.05), radius: isSelected ? 12 : 6, y: 4)
+        .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(isSelected ? palette.accent : palette.border, lineWidth: isSelected ? 2 : 0.7) }
+        .shadow(color: palette.shadow, radius: palette.shadowRadius, y: palette.shadowY)
     }
 }
 
@@ -142,7 +156,8 @@ struct DataSettingsView: View {
     @State private var confirmsRestore = false
     @State private var message: String?
     @State private var exportedAt = Date.now
-    var body: some View { List {
+    var body: some View { List { Group {
+
         Section("データ概要") {
             LabeledContent("タスク", value: "\(service.summary.tasks)件"); LabeledContent("予定", value: "\(service.summary.events)件")
             LabeledContent("メモ", value: "\(service.summary.notes)件"); LabeledContent("Project", value: "\(service.summary.projects)件")
@@ -154,6 +169,7 @@ struct DataSettingsView: View {
             LabeledContent("最終バックアップ", value: settings.lastBackupDate?.formatted(date: .abbreviated, time: .shortened) ?? "なし")
         }
         Section("プライバシー") { Text("バックアップには予定・タスク・メモの内容が含まれます。共有先と保管場所にご注意ください。").font(.subheadline).foregroundStyle(.secondary) }
+    }.themedListRows()
     }
     .navigationTitle("データ").task { try? service.refreshSummary() }
     .fileExporter(isPresented: $isExporting, document: document, contentType: .json, defaultFilename: filename) { result in
@@ -184,15 +200,19 @@ struct WidgetSettingsView: View {
         guard let identifier = Bundle.main.object(forInfoDictionaryKey: "AppGroupIdentifier") as? String else { return false }
         return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) != nil
     }
-    var body: some View { Form {
+    var body: some View { Form { Group {
+
         Section("更新") { Text("タスク・予定・完了状態を変更すると、WidgetのTimelineを自動更新します。").font(.subheadline).foregroundStyle(.secondary) }
         Section("診断") { LabeledContent("共有データ", value: appGroupAvailable ? "利用可能" : "要確認") }
-    }.navigationTitle("Widget") }
+    }.themedListRows()
+    }.themedScreen().navigationTitle("Widget") }
 }
 
 struct AboutView: View {
     private var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "" }
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—" }
     private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—" }
-    var body: some View { Form { Section { LabeledContent("アプリ", value: name); LabeledContent("バージョン", value: version); LabeledContent("Build", value: build) } }.navigationTitle("このアプリについて") }
+    var body: some View { Form { Group {
+ Section { LabeledContent("アプリ", value: name); LabeledContent("バージョン", value: version); LabeledContent("Build", value: build) } }.themedListRows()
+    }.themedScreen().navigationTitle("このアプリについて") }
 }

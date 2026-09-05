@@ -5,6 +5,7 @@ struct TaskListView: View {
     @State private var route: EditorRoute?
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.colorScheme) private var colorScheme
+    private var palette: ThemeAppearance { settings.theme.appearance(for: colorScheme) }
     var body: some View {
         VStack(spacing: 0) {
             sectionBar
@@ -23,8 +24,8 @@ struct TaskListView: View {
                                                          duplicate: { Task { await viewModel.duplicate(task) } },
                                                          assignProject: { id in Task { await viewModel.assign(task, to: id) } },
                                                          delete: { Task { await viewModel.delete(id: task.id) } }))
-                        .listRowSeparatorTint(.secondary.opacity(0.25))
-                        .listRowBackground(settings.theme.surfaceColor(for: colorScheme).opacity(settings.theme.surfaceOpacity))
+                        .listRowSeparatorTint(palette.border)
+                        .listRowBackground(palette.surface)
                 }.listStyle(.plain)
             }
         }
@@ -43,11 +44,14 @@ struct TaskListView: View {
             HStack(spacing: 8) {
                 ForEach(TaskListSection.allCases) { section in
                     Button { viewModel.selectedSection = section } label: {
-                        HStack(spacing: 5) { Text(section.rawValue); Text("\(viewModel.count(for: section))").font(.caption2).foregroundStyle(.secondary) }
+                        HStack(spacing: 5) { Text(section.rawValue); Text("\(viewModel.count(for: section))").font(.caption.monospacedDigit()) }
                             .font(.subheadline.weight(viewModel.selectedSection == section ? .semibold : .regular))
-                            .padding(.horizontal, 11).padding(.vertical, 7)
-                            .background(viewModel.selectedSection == section ? Color.primary.opacity(0.08) : .clear, in: Capsule())
-                    }.buttonStyle(.plain)
+                            .padding(.horizontal, 13).frame(minHeight: 44)
+                            .foregroundStyle(viewModel.selectedSection == section ? palette.selectionInk : palette.mutedInk)
+                            .background(viewModel.selectedSection == section ? palette.accent : palette.control,
+                                        in: RoundedRectangle(cornerRadius: palette.controlRadius))
+                    }.buttonStyle(ThemedPressStyle())
+                        .accessibilityAddTraits(viewModel.selectedSection == section ? .isSelected : [])
                 }
             }.padding(.horizontal, 16).padding(.vertical, 10)
         }

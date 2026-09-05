@@ -34,7 +34,16 @@ struct TaskQuickActionsModifier: ViewModifier {
     @State private var showsQuickActions = false
 
     func body(content: Content) -> some View {
-        content
+        HStack(spacing: 4) {
+            content
+            if usesCustomSwipe {
+                Button { showsQuickActions = true } label: {
+                    Image(systemName: "ellipsis").frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(task.title)の操作")
+            }
+        }
             .contentShape(Rectangle())
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button(action: toggle) { Label(task.isCompleted ? "未完了" : "完了", systemImage: task.isCompleted ? "arrow.uturn.backward.circle" : "checkmark") }
@@ -76,6 +85,7 @@ struct TaskQuickActionsModifier: ViewModifier {
                     Button("明日へ送る", action: moveTomorrow)
                     Button("日付変更") { showsDatePicker = true }
                 }
+                Button(task.isCompleted ? "未完了に戻す" : "完了", action: toggle)
                 Button(task.recurrenceRule == nil ? "その他・編集" : "系列全体を編集", action: edit)
                 Button("キャンセル", role: .cancel) {}
             }
@@ -123,12 +133,33 @@ private struct CompactDatePicker: View {
     }
     var body: some View {
         NavigationStack {
-            DatePicker(title, selection: $date, displayedComponents: .date).datePickerStyle(.graphical).padding()
+            VStack {
+                HStack {
+                    Button("今日") { apply(.now); dismiss() }
+                    Button("明日") {
+                        apply(Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now); dismiss()
+                    }
+                    Menu("今週") {
+                        ForEach(0..<7) { offset in
+                            if let start = Calendar.current.dateInterval(of: .weekOfYear, for: Date.now)?.start,
+                               let day = Calendar.current.date(byAdding: .day, value: offset, to: start),
+                               day >= Calendar.current.startOfDay(for: .now) {
+                                Button(day.formatted(.dateTime.month().day().weekday())) { apply(day); dismiss() }
+                            }
+                        }
+                    }
+                    Spacer()
+                }.buttonStyle(.bordered).padding(.horizontal)
+                Text("今週・別の日を選択").font(.caption).foregroundStyle(.secondary)
+                DatePicker(title, selection: $date, displayedComponents: .date).datePickerStyle(.graphical)
+            }.padding()
+                .frame(maxHeight: .infinity, alignment: .top)
+                .themedScreen()
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("変更") { apply(date); dismiss() } }
                 }
-        }.presentationDetents([.medium])
+        }.presentationDetents([.large])
     }
 }

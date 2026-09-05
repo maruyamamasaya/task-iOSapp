@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CalendarHeader: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var settings: SettingsStore
     let month: Date
     var title: String? = nil
@@ -13,7 +14,10 @@ struct CalendarHeader: View {
             Button(action: previous) { Image(systemName: "chevron.left") }
                 .accessibilityLabel("前月")
             Text(title ?? month.formatted(.dateTime.year().month(.wide)))
-                .font(settings.theme.headingFont(.title3)).frame(maxWidth: .infinity)
+                .font(settings.theme.headingFont(.title3, for: colorScheme))
+                .tracking(settings.theme.appearance(for: colorScheme).headingTracking)
+                .foregroundStyle(settings.theme.appearance(for: colorScheme).ink)
+                .frame(maxWidth: .infinity)
             Button("今日", action: today).font(.subheadline)
             Button(action: next) { Image(systemName: "chevron.right") }
                 .accessibilityLabel("翌月")

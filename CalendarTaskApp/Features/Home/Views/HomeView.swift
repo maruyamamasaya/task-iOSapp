@@ -7,31 +7,48 @@ struct HomeView: View {
     @State private var pendingQuickAddDraft: QuickAddResult?
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 30) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 DailyHeader(date: viewModel.selectedDate, isToday: viewModel.isToday,
                             previous: { Task { await viewModel.moveDay(by: -1) } },
                             next: { Task { await viewModel.moveDay(by: 1) } },
                             returnToToday: { Task { await viewModel.returnToToday() } })
-                Button { showsQuickAdd = true } label: {
-                    Label("予定やタスクを追加...", systemImage: "plus")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
-                        .overlay(alignment: .bottom) { Divider() }
-                }.buttonStyle(.plain)
-                AllDaySection(events: viewModel.allDayEvents, tasks: viewModel.allDayTasks,
+                HStack {
+                    Label("予定 \(viewModel.dayEvents.count)件", systemImage: "calendar")
+                    Spacer()
+                    Label("残り \(viewModel.dayTasks.filter { !$0.isCompleted }.count)件", systemImage: "checkmark.circle")
+                }
+                .font(.subheadline).foregroundStyle(.secondary)
+                if let error = viewModel.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.red)
+                }
+                if !viewModel.allDayEvents.isEmpty {
+                AllDaySection(events: viewModel.allDayEvents, tasks: [],
                               editEvent: { editorRoute = .event(viewModel.sourceEvent(for: $0)) }, editTask: { editorRoute = .task(viewModel.sourceTask(for: $0)) },
                               toggleTask: { task in Task { await viewModel.toggleCompletion(task) } }, taskActions: taskActions, eventActions: eventActions)
+                }
                 DailyTimelineView(items: viewModel.timelineItems, showsNow: viewModel.isToday, now: viewModel.now,
                                   editEvent: { editorRoute = .event(viewModel.sourceEvent(for: $0)) }, editTask: { editorRoute = .task(viewModel.sourceTask(for: $0)) },
                                   toggleTask: { task in Task { await viewModel.toggleCompletion(task) } }, taskActions: taskActions, eventActions: eventActions)
-                UnscheduledTasksSection(tasks: viewModel.unscheduledTasks,
+                UnscheduledTasksSection(tasks: viewModel.allDayTasks + viewModel.unscheduledTasks,
                                         edit: { editorRoute = .task(viewModel.sourceTask(for: $0)) },
                                         toggle: { task in Task { await viewModel.toggleCompletion(task) } }, actions: taskActions)
                 DailyNoteSection(text: viewModel.memoText) {
                     editorRoute = .note(viewModel.note(for: viewModel.selectedDate), viewModel.selectedDate)
                 }
             }
-            .padding(.horizontal, 24).padding(.vertical, 20)
+            .environment(\.unifiedPlannerPage, true)
+            .themedSurface()
+            .padding(.horizontal, 16).padding(.vertical, 12)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button { showsQuickAdd = true } label: {
+                Label("タスク・予定・メモを追加", systemImage: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(ThemedProminentStyle())
+            .padding(.horizontal, 24).padding(.vertical, 8)
+            .background(.regularMaterial)
         }
         .themedScreen()
         .navigationTitle("今日").navigationBarTitleDisplayMode(.inline)

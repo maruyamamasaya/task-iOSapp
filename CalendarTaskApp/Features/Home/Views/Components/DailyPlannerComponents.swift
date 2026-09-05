@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DailyHeader: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var settings: SettingsStore
     let date: Date
     let isToday: Bool
@@ -15,7 +16,8 @@ struct DailyHeader: View {
             Button(action: returnToToday) {
                 VStack(spacing: 4) {
                     Text(date.formatted(.dateTime.month(.wide).day()))
-                        .font(settings.theme.headingFont(.largeTitle))
+                        .font(settings.theme.headingFont(.largeTitle, for: colorScheme))
+                        .tracking(settings.theme.appearance(for: colorScheme).headingTracking)
                     Text(date.formatted(.dateTime.weekday(.wide))).font(.subheadline).foregroundStyle(.secondary)
                     if !isToday { Text("今日に戻る").font(.caption2).foregroundStyle(.tint) }
                 }
@@ -99,7 +101,7 @@ struct TimelineItemRow: View {
                     .modifier(EventQuickActionsModifier(event: event, edit: { eventActions.edit(event) }, reschedule: { eventActions.reschedule(event, $0) }, duplicate: { eventActions.duplicate(event) }, delete: { eventActions.delete(event) }))
             case let .task(task):
                 HStack(alignment: .top, spacing: 9) {
-                    Button { toggleTask(task) } label: { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle())
+                    Button { toggleTask(task) } label: { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle()).accessibilityLabel(task.isCompleted ? "\(task.title)を未完了に戻す" : "\(task.title)を完了")
                     Button { editTask(task) } label: { itemText(symbol: nil) }.buttonStyle(ThemedPressStyle())
                 }
                 .modifier(TaskQuickActionsModifier(task: task, usesCustomSwipe: true, edit: { taskActions.edit(task) }, toggle: { taskActions.toggle(task) }, moveToday: { taskActions.moveToday(task) }, moveTomorrow: { taskActions.moveTomorrow(task) }, reschedule: { taskActions.reschedule(task, $0) }, duplicate: { taskActions.duplicate(task) }, assignProject: { _ in }, delete: { taskActions.delete(task) }))
@@ -141,8 +143,8 @@ struct UnscheduledTasksSection: View {
     let toggle: (TaskItem) -> Void
     let actions: TaskRowActions
     var body: some View {
-        PlannerSection(title: "今日やること", symbol: "checklist") {
-            if tasks.isEmpty { PlannerEmptyText(text: "時刻未指定のタスクはありません") }
+        PlannerSection(title: "やること", symbol: "checklist") {
+            if tasks.isEmpty { PlannerEmptyText(text: "時間を決めていないタスクはありません") }
             ForEach(tasks) { task in TaskPlannerRow(task: task, edit: { edit(task) }, toggle: { toggle(task) }, actions: actions) }
         }
     }
@@ -153,7 +155,7 @@ private struct TaskPlannerRow: View {
     let task: TaskItem; let edit: () -> Void; let toggle: () -> Void; let actions: TaskRowActions
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
-            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle())
+            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle()).accessibilityLabel(task.isCompleted ? "\(task.title)を未完了に戻す" : "\(task.title)を完了")
             Button(action: edit) {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
@@ -177,22 +179,41 @@ struct DailyNoteSection: View {
             Button(action: edit) {
                 Text(text.isEmpty ? "メモを書く" : text).font(.subheadline)
                     .foregroundStyle(text.isEmpty ? .secondary : .primary).lineLimit(5)
-                    .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
             }.buttonStyle(ThemedPressStyle())
         }
     }
 }
 
+private struct UnifiedPlannerPageKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var unifiedPlannerPage: Bool {
+        get { self[UnifiedPlannerPageKey.self] }
+        set { self[UnifiedPlannerPageKey.self] = newValue }
+    }
+}
+
 struct PlannerSection<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.unifiedPlannerPage) private var unifiedPage
     @EnvironmentObject private var settings: SettingsStore
     let title: String; let symbol: String; @ViewBuilder let content: Content
     var body: some View {
+        if unifiedPage { sectionContent }
+        else { sectionContent.themedSurface() }
+    }
+    private var sectionContent: some View {
         VStack(alignment: .leading, spacing: settings.theme.contentSpacing) {
-            Label(title, systemImage: symbol).font(settings.theme.headingFont(.headline)).foregroundStyle(.primary)
-            Rectangle().fill(Color.accentColor.opacity(0.16)).frame(height: 1)
+            Label(title, systemImage: symbol).font(settings.theme.headingFont(.headline, for: colorScheme))
+                .tracking(settings.theme.appearance(for: colorScheme).headingTracking)
+                .foregroundStyle(settings.theme.appearance(for: colorScheme).ink)
+            Rectangle().fill(settings.theme.appearance(for: colorScheme).border).frame(height: 1)
             content
         }
-        .themedSurface()
+
     }
 }
 

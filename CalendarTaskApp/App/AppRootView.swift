@@ -56,96 +56,142 @@ extension AppTheme {
         switch self { case .classic: "book.closed"; case .sakura: "camera.macro"; case .linen: "leaf"; case .midnight: "moon.stars"; case .modern: "square.on.circle" }
     }
     var accent: Color {
-        switch self { case .classic: Color(red: 0.22, green: 0.43, blue: 0.66); case .sakura: Color(red: 0.82, green: 0.35, blue: 0.48); case .linen: Color(red: 0.43, green: 0.49, blue: 0.30); case .midnight: Color(red: 0.42, green: 0.72, blue: 0.94); case .modern: Color(red: 0.39, green: 0.29, blue: 0.82) }
+        Color(uiColor: UIColor { traits in
+            UIColor(self.appearance(for: traits.userInterfaceStyle == .dark ? .dark : .light).accent)
+        })
     }
-    var cornerRadius: CGFloat {
-        switch self { case .classic: 8; case .sakura: 22; case .linen: 12; case .midnight: 14; case .modern: 24 }
-    }
-    var surfaceOpacity: Double {
-        switch self { case .classic: 0.97; case .sakura: 0.96; case .linen: 0.97; case .midnight: 0.97; case .modern: 1.0 }
-    }
-    func surfaceColor(for scheme: ColorScheme) -> Color {
-        switch (self, scheme) {
-        case (.classic, .dark): Color(red: 0.16, green: 0.17, blue: 0.18); case (.classic, _): Color(red: 1, green: 0.995, blue: 0.96)
-        case (.sakura, .dark): Color(red: 0.22, green: 0.14, blue: 0.17); case (.sakura, _): Color.white
-        case (.linen, .dark): Color(red: 0.19, green: 0.18, blue: 0.14); case (.linen, _): Color(red: 0.985, green: 0.965, blue: 0.90)
-        case (.midnight, .dark): Color(red: 0.09, green: 0.12, blue: 0.20); case (.midnight, _): Color(red: 0.97, green: 0.98, blue: 1)
-        case (.modern, .dark): Color(red: 0.16, green: 0.15, blue: 0.20); case (.modern, _): Color.white
-        @unknown default: Color(.secondarySystemBackground)
-        }
-    }
-    func baseColor(for scheme: ColorScheme) -> Color {
-        switch (self, scheme) {
-        case (.classic, .dark): Color(red: 0.10, green: 0.12, blue: 0.15); case (.classic, _): Color(red: 0.98, green: 0.97, blue: 0.92)
-        case (.sakura, .dark): Color(red: 0.16, green: 0.10, blue: 0.13); case (.sakura, _): Color(red: 1.0, green: 0.95, blue: 0.96)
-        case (.linen, .dark): Color(red: 0.13, green: 0.13, blue: 0.10); case (.linen, _): Color(red: 0.94, green: 0.91, blue: 0.82)
-        case (.midnight, .dark): Color(red: 0.055, green: 0.075, blue: 0.13); case (.midnight, _): Color(red: 0.91, green: 0.93, blue: 0.97)
-        case (.modern, .dark): Color(red: 0.09, green: 0.09, blue: 0.12); case (.modern, _): Color(red: 0.95, green: 0.95, blue: 0.98)
-        @unknown default: Color(.systemBackground)
-        }
-    }
+    var cornerRadius: CGFloat { appearance(for: .light).surfaceRadius }
+    var surfaceOpacity: Double { 1 }
+    func surfaceColor(for scheme: ColorScheme) -> Color { appearance(for: scheme).surface }
+    func baseColor(for scheme: ColorScheme) -> Color { appearance(for: scheme).background }
+
 }
 
 struct AppThemeBackground: View {
     let theme: AppTheme
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                theme.baseColor(for: colorScheme)
+        let palette = theme.appearance(for: colorScheme)
+        ZStack {
+            palette.background
+            if !reduceTransparency {
+                if theme == .sakura {
+                    RadialGradient(colors: [palette.ornament.opacity(colorScheme == .dark ? 0.16 : 0.12), .clear],
+                                   center: .topTrailing, startRadius: 0, endRadius: colorScheme == .dark ? 280 : 420)
+                }
                 Canvas { context, size in
-                    switch theme {
-                    case .classic:
-                        for y in stride(from: 34.0, through: size.height, by: 30) { context.stroke(Path(CGRect(x: 0, y: y, width: size.width, height: 0)), with: .color(theme.accent.opacity(0.11)), lineWidth: 0.7) }
-                        var margin = Path(); margin.move(to: CGPoint(x: 22, y: 0)); margin.addLine(to: CGPoint(x: 22, y: size.height)); context.stroke(margin, with: .color(Color.red.opacity(0.09)), lineWidth: 1)
-                        for y in stride(from: 22.0, through: size.height, by: 72) { context.fill(Path(ellipseIn: CGRect(x: 7, y: y, width: 6, height: 6)), with: .color(Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08))) }
-                    case .sakura:
-                        context.fill(Path(ellipseIn: CGRect(x: size.width - 155, y: -70, width: 230, height: 190)), with: .color(theme.accent.opacity(0.075)))
-                        context.fill(Path(ellipseIn: CGRect(x: -90, y: size.height * 0.7, width: 190, height: 230)), with: .color(Color.orange.opacity(0.035)))
-                        for x in stride(from: 24.0, through: size.width, by: 78) { for y in stride(from: 28.0, through: size.height, by: 82) { let offset = Int(y / 82).isMultiple(of: 2) ? 0.0 : 24.0; context.fill(Path(ellipseIn: CGRect(x: x + offset, y: y, width: 8, height: 4)), with: .color(theme.accent.opacity(0.11))) } }
-                    case .linen:
-                        for x in stride(from: 0.0, through: size.width, by: 7) { var path = Path(); path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x + 2, y: size.height)); context.stroke(path, with: .color(Color.brown.opacity(0.035)), lineWidth: 0.55) }
-                        for y in stride(from: 0.0, through: size.height, by: 9) { var path = Path(); path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y + 1)); context.stroke(path, with: .color(Color.white.opacity(0.10)), lineWidth: 0.5) }
-                    case .midnight:
-                        for x in stride(from: 0.0, through: size.width, by: 28) { context.stroke(Path(CGRect(x: x, y: 0, width: 0, height: size.height)), with: .color(theme.accent.opacity(0.07)), lineWidth: 0.6) }
-                        for y in stride(from: 0.0, through: size.height, by: 28) { context.stroke(Path(CGRect(x: 0, y: y, width: size.width, height: 0)), with: .color(theme.accent.opacity(0.07)), lineWidth: 0.6) }
-                        for index in 0..<34 { let x = CGFloat((index * 83) % 379) / 379 * size.width; let y = CGFloat((index * 137) % 521) / 521 * size.height; context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.4, height: 1.4)), with: .color(theme.accent.opacity(0.22))) }
-                    case .modern:
-                        context.fill(Path(ellipseIn: CGRect(x: size.width * 0.64, y: -80, width: 210, height: 210)), with: .color(theme.accent.opacity(0.08)))
-                        context.fill(Path(roundedRect: CGRect(x: -55, y: size.height * 0.68, width: 170, height: 170), cornerRadius: 42), with: .color(Color.cyan.opacity(0.055)))
-                        var slash = Path(); slash.move(to: CGPoint(x: size.width * 0.72, y: 0)); slash.addLine(to: CGPoint(x: size.width, y: size.height * 0.18)); context.stroke(slash, with: .color(theme.accent.opacity(0.10)), lineWidth: 22)
-                    }
-                    for index in 0..<120 {
-                        let x = CGFloat((index * 47) % 997) / 997 * size.width
-                        let y = CGFloat((index * 89) % 991) / 991 * size.height
-                        context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 0.8, height: 0.8)), with: .color(Color.primary.opacity(0.028)))
+                    let ink = palette.ornament
+                    switch (theme, colorScheme) {
+                    case (.classic, .light):
+                        for y in stride(from: 28.0, through: size.height, by: 30) {
+                            line(&context, from: CGPoint(x: 0, y: y), to: CGPoint(x: size.width, y: y), color: ink.opacity(0.13))
+                        }
+                        line(&context, from: CGPoint(x: 22, y: 0), to: CGPoint(x: 22, y: size.height), color: Color.red.opacity(0.10))
+                    case (.classic, _):
+                        // A restrained gold spine and inset cover frame, rather than luminous ruled paper.
+                        for x in [9.0, 13.0] {
+                            line(&context, from: CGPoint(x: x, y: 0), to: CGPoint(x: x, y: size.height), color: ink.opacity(0.27))
+                        }
+                        context.stroke(Path(roundedRect: CGRect(x: 20, y: 12, width: max(0, size.width - 32), height: max(0, size.height - 24)), cornerRadius: 5), with: .color(ink.opacity(0.12)), lineWidth: 0.7)
+                    case (.sakura, .light):
+                        petals(&context, size: size, color: ink.opacity(0.19), night: false)
+                    case (.sakura, _):
+                        context.fill(Path(ellipseIn: CGRect(x: size.width - 92, y: 28, width: 48, height: 48)), with: .color(Color.white.opacity(0.08)))
+                        petals(&context, size: size, color: ink.opacity(0.25), night: true)
+                    case (.linen, .light):
+                        for x in stride(from: 0.0, through: size.width, by: 7) {
+                            line(&context, from: CGPoint(x: x, y: 0), to: CGPoint(x: x + 2, y: size.height), color: ink.opacity(0.08), width: 0.5)
+                        }
+                        for y in stride(from: 0.0, through: size.height, by: 9) {
+                            line(&context, from: CGPoint(x: 0, y: y), to: CGPoint(x: size.width, y: y + 1), color: Color.white.opacity(0.26), width: 0.5)
+                        }
+                    case (.linen, _):
+                        for index in 0..<500 {
+                            let x = CGFloat((index * 67) % 997) / 997 * size.width
+                            let y = CGFloat((index * 113) % 991) / 991 * size.height
+                            context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.8, height: 0.8)), with: .color(ink.opacity(0.075)))
+                        }
+                        var seam = Path()
+                        seam.move(to: CGPoint(x: 11, y: 0)); seam.addLine(to: CGPoint(x: 11, y: size.height))
+                        context.stroke(seam, with: .color(ink.opacity(0.28)), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
+                    case (.midnight, .light):
+                        for x in stride(from: 0.0, through: size.width, by: 28) {
+                            line(&context, from: CGPoint(x: x, y: 0), to: CGPoint(x: x, y: size.height), color: ink.opacity(0.10), width: 0.5)
+                        }
+                        for y in stride(from: 0.0, through: size.height, by: 28) {
+                            line(&context, from: CGPoint(x: 0, y: y), to: CGPoint(x: size.width, y: y), color: ink.opacity(0.10), width: 0.5)
+                        }
+                    case (.midnight, _):
+                        for radius in [150.0, 230.0, 310.0] {
+                            context.stroke(Path(ellipseIn: CGRect(x: size.width - radius, y: -radius, width: radius * 2, height: radius * 2)), with: .color(ink.opacity(0.085)), lineWidth: 0.5)
+                        }
+                        for index in 0..<40 {
+                            let x = CGFloat((index * 83) % 379) / 379 * size.width
+                            let y = CGFloat((index * 137) % 521) / 521 * size.height
+                            context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.2, height: 1.2)), with: .color(ink.opacity(0.30)))
+                        }
+                    case (.modern, .light):
+                        context.fill(Path(ellipseIn: CGRect(x: size.width - 145, y: -95, width: 240, height: 240)), with: .color(ink.opacity(0.10)))
+                        context.fill(Path(roundedRect: CGRect(x: -70, y: size.height * 0.75, width: 180, height: 180), cornerRadius: 40), with: .color(ink.opacity(0.055)))
+                    case (.modern, _):
+                        // Architectural edge lighting on charcoal; no decorative grain.
+                        let rect = CGRect(x: size.width * 0.65, y: -50, width: size.width * 0.65, height: size.height * 0.5)
+                        context.stroke(Path(roundedRect: rect, cornerRadius: 32), with: .color(ink.opacity(0.14)), lineWidth: 1)
+                        line(&context, from: CGPoint(x: 0, y: size.height * 0.84), to: CGPoint(x: size.width * 0.32, y: size.height * 0.84), color: ink.opacity(0.12))
                     }
                 }
-            }.frame(width: proxy.size.width, height: proxy.size.height)
-        }.ignoresSafeArea()
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func line(_ context: inout GraphicsContext, from: CGPoint, to: CGPoint, color: Color, width: CGFloat = 0.7) {
+        var path = Path(); path.move(to: from); path.addLine(to: to)
+        context.stroke(path, with: .color(color), lineWidth: width)
+    }
+
+    private func petals(_ context: inout GraphicsContext, size: CGSize, color: Color, night: Bool) {
+        // Keep blossoms at the edges, away from titles and reading surfaces.
+        for index in 0..<(night ? 14 : 22) {
+            let right = index.isMultiple(of: 2)
+            let x = right ? size.width - CGFloat(12 + (index * 17) % 52) : CGFloat((index * 13) % 36)
+            let y = CGFloat((index * 97) % 701) / 701 * size.height
+            var petal = Path()
+            petal.move(to: CGPoint(x: x, y: y))
+            petal.addQuadCurve(to: CGPoint(x: x + 9, y: y + 8), control: CGPoint(x: x + 12, y: y - 2))
+            petal.addQuadCurve(to: CGPoint(x: x, y: y), control: CGPoint(x: x - 3, y: y + 10))
+            context.fill(petal, with: .color(color))
+        }
     }
 }
 
 struct ThemedScreenModifier: ViewModifier {
     @EnvironmentObject private var settings: SettingsStore
-    func body(content: Content) -> some View { content.fontDesign(settings.theme == .sakura ? .rounded : .default).scrollContentBackground(.hidden).background { AppThemeBackground(theme: settings.theme) } }
+    @Environment(\.colorScheme) private var colorScheme
+    func body(content: Content) -> some View {
+        let palette = settings.theme.appearance(for: colorScheme)
+        content
+            .fontDesign(settings.theme == .sakura ? .rounded : .default)
+            .foregroundStyle(palette.ink)
+            .tint(palette.accent)
+            .accentColor(palette.accent)
+            .scrollContentBackground(.hidden)
+            .background { AppThemeBackground(theme: settings.theme) }
+    }
 }
 
 struct ThemedSurfaceModifier: ViewModifier {
     @EnvironmentObject private var settings: SettingsStore
-    @Environment(\.colorScheme) private var colorScheme
     let padding: CGFloat
     func body(content: Content) -> some View {
         content
             .padding(padding + (settings.theme.contentSpacing - 14) / 2)
-            .background(settings.theme.surfaceColor(for: colorScheme).opacity(settings.theme.surfaceOpacity), in: RoundedRectangle(cornerRadius: settings.theme.cornerRadius, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: settings.theme.cornerRadius, style: .continuous).stroke(borderColor, lineWidth: settings.theme == .classic ? 0.8 : 0.55) }
-            .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
+            .background { ThemeSurface(theme: settings.theme) }
     }
-    private var borderColor: Color { settings.theme == .linen ? Color.brown.opacity(0.16) : settings.theme.accent.opacity(settings.theme == .midnight ? 0.18 : 0.11) }
-    private var shadowColor: Color { settings.theme == .modern ? settings.theme.accent.opacity(0.10) : Color.black.opacity(colorScheme == .dark ? 0.18 : 0.07) }
-    private var shadowRadius: CGFloat { settings.theme == .classic ? 2 : settings.theme == .modern ? 10 : settings.theme == .linen ? 2 : 6 }
-    private var shadowY: CGFloat { settings.theme == .classic || settings.theme == .linen ? 1 : 3 }
 }
 
 extension View {

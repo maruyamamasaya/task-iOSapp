@@ -92,8 +92,9 @@ private struct EditorScaffold<Content: View>: View {
                                 Button("削除", role: .destructive) { Task { await delete(existingID); dismiss() } }
                             }
                     }
-                }.padding(.horizontal, 24).padding(.vertical, 22)
+                }.themedSurface(padding: 20).padding(.horizontal, 16).padding(.vertical, 18)
             }
+            .themedScreen()
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { if hasUnsavedChanges { confirmsCancellation = true } else { dismiss() } } }

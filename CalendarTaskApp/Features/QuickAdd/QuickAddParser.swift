@@ -24,7 +24,7 @@ struct QuickAddResult: Hashable {
                              createdAt: now, updatedAt: now)
     }
     func note(existing: DailyNote?, now: Date = .now) -> DailyNote {
-        DailyNote(id: existing?.id ?? UUID(), date: date, text: title,
+        DailyNote(id: existing?.id ?? UUID(), date: date, text: [existing?.text ?? "", title].filter { !$0.isEmpty }.joined(separator: "\n"),
                   createdAt: existing?.createdAt ?? now, updatedAt: now)
     }
 }

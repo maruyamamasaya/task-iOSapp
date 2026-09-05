@@ -95,17 +95,22 @@ import Combine
     func duplicateEvent(_ event: CalendarEvent) async { await calendarStore.duplicate(sourceEvent(for: event)); haptics.action(); await refresh() }
     func saveNote(_ note: DailyNote) async { await dailyNoteStore.save(note); await loadMemo() }
     func deleteNote(id: UUID) async { await dailyNoteStore.delete(id: id); memoText = "" }
-    func saveQuickAdd(_ result: QuickAddResult) async {
+    func saveQuickAdd(_ result: QuickAddResult) async -> Bool {
+        let saved: Bool
         switch result.type {
-        case .task: _ = await saveTask(result.task(now: dateProvider.now))
-        case .event: _ = await saveEvent(result.event(now: dateProvider.now))
+        case .task: saved = await saveTask(result.task(now: dateProvider.now))
+        case .event: saved = await saveEvent(result.event(now: dateProvider.now))
         case .note:
             await dailyNoteStore.load(for: result.date)
+            guard dailyNoteStore.errorMessage == nil else { return false }
             await dailyNoteStore.save(result.note(existing: dailyNoteStore.note, now: dateProvider.now))
-            if Calendar.current.isDate(result.date, inSameDayAs: selectedDate) { memoText = dailyNoteStore.note?.text ?? "" }
+            saved = dailyNoteStore.errorMessage == nil
+            await loadMemo()
         }
-        haptics.action()
+        if saved { haptics.action() }
+        return saved
     }
+
     func note(for date: Date) -> DailyNote? {
         guard Calendar.current.isDate(date, inSameDayAs: selectedDate) else { return nil }
         return dailyNoteStore.note
