@@ -275,7 +275,29 @@ struct CalendarTaskWidgetView: View {
         }
     }
 
-    private var palette: WidgetPalette { WidgetPalette(colorScheme: colorScheme) }
+    private var preferences: WidgetAppearancePreferences { .current }
+    private var effectiveColorScheme: ColorScheme {
+        switch preferences.appearance {
+        case "ライト": .light
+        case "ダーク": .dark
+        default: colorScheme
+        }
+    }
+    private var palette: WidgetPalette { WidgetPalette(theme: preferences.theme, colorScheme: effectiveColorScheme) }
+}
+
+private struct WidgetAppearancePreferences {
+    let appearance: String
+    let theme: String
+
+    static var current: Self {
+        guard let identifier = Bundle.main.object(forInfoDictionaryKey: "AppGroupIdentifier") as? String,
+              let defaults = UserDefaults(suiteName: identifier) else {
+            return Self(appearance: "システム", theme: "クラシック手帳")
+        }
+        return Self(appearance: defaults.string(forKey: "settings.appearance") ?? "システム",
+                    theme: defaults.string(forKey: "settings.theme") ?? "クラシック手帳")
+    }
 }
 
 private struct WidgetPalette {
@@ -287,8 +309,73 @@ private struct WidgetPalette {
     let ornament: Color
     let control: Color
 
-    init(colorScheme: ColorScheme) {
-        if colorScheme == .dark {
+    init(theme: String, colorScheme: ColorScheme) {
+        switch (theme, colorScheme) {
+        case ("さくら日和", .light):
+            background = Color(widgetHex: 0xFFFAFB)
+            accent = Color(widgetHex: 0xA6395C)
+            ink = Color(widgetHex: 0x432D38)
+            mutedInk = Color(widgetHex: 0x79606D)
+            border = Color(widgetHex: 0xEDD1DC)
+            ornament = Color(widgetHex: 0xD583A0)
+            control = Color(widgetHex: 0xF8E3EB)
+        case ("さくら日和", _):
+            background = Color(widgetHex: 0x302536)
+            accent = Color(widgetHex: 0xF0AAC7)
+            ink = Color(widgetHex: 0xF8EAF2)
+            mutedInk = Color(widgetHex: 0xCFB3C5)
+            border = Color(widgetHex: 0x695066)
+            ornament = Color(widgetHex: 0xB78FCA)
+            control = Color(widgetHex: 0x473346)
+        case ("ナチュラルリネン", .light):
+            background = Color(widgetHex: 0xF8F3E7)
+            accent = Color(widgetHex: 0x52613C)
+            ink = Color(widgetHex: 0x36382D)
+            mutedInk = Color(widgetHex: 0x62634F)
+            border = Color(widgetHex: 0xCEC4AE)
+            ornament = Color(widgetHex: 0x988360)
+            control = Color(widgetHex: 0xE7E6D7)
+        case ("ナチュラルリネン", _):
+            background = Color(widgetHex: 0x362C24)
+            accent = Color(widgetHex: 0xD9B28B)
+            ink = Color(widgetHex: 0xF1E6D6)
+            mutedInk = Color(widgetHex: 0xC9B59D)
+            border = Color(widgetHex: 0x6E5946)
+            ornament = Color(widgetHex: 0xB7936A)
+            control = Color(widgetHex: 0x4B3D30)
+        case ("ミッドナイト", .light):
+            background = Color(widgetHex: 0xF7FAFD)
+            accent = Color(widgetHex: 0x285E82)
+            ink = Color(widgetHex: 0x223747)
+            mutedInk = Color(widgetHex: 0x566D80)
+            border = Color(widgetHex: 0xBECDD9)
+            ornament = Color(widgetHex: 0x688DA8)
+            control = Color(widgetHex: 0xE0EAF2)
+        case ("ミッドナイト", _):
+            background = Color(widgetHex: 0x1B2C40)
+            accent = Color(widgetHex: 0x96CAE7)
+            ink = Color(widgetHex: 0xE4EEF8)
+            mutedInk = Color(widgetHex: 0xADC1D5)
+            border = Color(widgetHex: 0x465E76)
+            ornament = Color(widgetHex: 0x83B7D8)
+            control = Color(widgetHex: 0x2B4055)
+        case ("モダンノート", .light):
+            background = Color(widgetHex: 0xFFFFFF)
+            accent = Color(widgetHex: 0x5C42B5)
+            ink = Color(widgetHex: 0x282833)
+            mutedInk = Color(widgetHex: 0x666575)
+            border = Color(widgetHex: 0xDEDEE8)
+            ornament = Color(widgetHex: 0xB0A3D7)
+            control = Color(widgetHex: 0xEEEAF9)
+        case ("モダンノート", _):
+            background = Color(widgetHex: 0x29292F)
+            accent = Color(widgetHex: 0xC1B4F6)
+            ink = Color(widgetHex: 0xF0F0F5)
+            mutedInk = Color(widgetHex: 0xBCBAC8)
+            border = Color(widgetHex: 0x515158)
+            ornament = Color(widgetHex: 0x9A96B0)
+            control = Color(widgetHex: 0x3B374A)
+        case ("クラシック手帳", .dark):
             background = Color(widgetHex: 0x232C36)
             accent = Color(widgetHex: 0xD8BB83)
             ink = Color(widgetHex: 0xF1EBDD)
@@ -296,7 +383,7 @@ private struct WidgetPalette {
             border = Color(widgetHex: 0x59606A)
             ornament = Color(widgetHex: 0xB99A61)
             control = Color(widgetHex: 0x343B43)
-        } else {
+        default:
             background = Color(widgetHex: 0xFFFCF4)
             accent = Color(widgetHex: 0x315D88)
             ink = Color(widgetHex: 0x292D32)

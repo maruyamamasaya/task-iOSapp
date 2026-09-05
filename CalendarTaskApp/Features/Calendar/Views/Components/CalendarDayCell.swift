@@ -20,7 +20,7 @@ struct CalendarDayCell: View {
                     .font(.system(.subheadline, design: settings.theme.headingDesign,
                                   weight: isToday || isSelected ? .bold : .regular))
                     .monospacedDigit()
-                    .foregroundStyle(isSelected ? palette.selectionInk : isInDisplayedMonth ? palette.ink : palette.mutedInk)
+                    .foregroundStyle(dayNumberColor)
                     .frame(minWidth: 32, minHeight: 32)
                     .background {
                         RoundedRectangle(cornerRadius: palette.controlRadius)
@@ -50,11 +50,22 @@ struct CalendarDayCell: View {
         }
         .buttonStyle(ThemedPressStyle())
         .accessibilityLabel(date.formatted(date: .complete, time: .omitted))
-        .accessibilityValue([isToday ? "今日" : nil, hasEvent ? "予定あり" : nil, hasIncompleteTask ? "未完了タスクあり" : nil].compactMap { $0 }.joined(separator: "、"))
+        .accessibilityValue([isToday ? "今日" : nil, isHoliday ? "祝日" : nil, hasEvent ? "予定あり" : nil, hasIncompleteTask ? "未完了タスクあり" : nil].compactMap { $0 }.joined(separator: "、"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func indicator(visible: Bool, color: Color) -> some View {
         Circle().fill(visible ? color : .clear).frame(width: 4, height: 4)
+    }
+
+    private var isHoliday: Bool { Calendar.current.isJapaneseHoliday(date) }
+
+    private var dayNumberColor: Color {
+        if isSelected { return palette.selectionInk }
+        guard isInDisplayedMonth else { return palette.mutedInk }
+        let weekday = Calendar.current.component(.weekday, from: date)
+        if isHoliday || weekday == 1 { return colorScheme == .dark ? Color(red: 1, green: 0.55, blue: 0.58) : Color(red: 0.68, green: 0.08, blue: 0.12) }
+        if weekday == 7 { return colorScheme == .dark ? Color(red: 0.48, green: 0.72, blue: 1) : Color(red: 0.05, green: 0.27, blue: 0.62) }
+        return palette.ink
     }
 }

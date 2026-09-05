@@ -2,6 +2,23 @@ import XCTest
 @testable import CalendarTaskApp
 
 final class CalendarExtensionTests: XCTestCase {
+    func testJapaneseHolidayRulesIncludeFixedMovedAndSubstituteHolidays() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+
+        XCTAssertTrue(calendar.isJapaneseHoliday(try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 1)))))
+        XCTAssertTrue(calendar.isJapaneseHoliday(try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 12)))))
+        XCTAssertTrue(calendar.isJapaneseHoliday(try XCTUnwrap(calendar.date(from: DateComponents(year: 2021, month: 8, day: 9)))))
+        XCTAssertFalse(calendar.isJapaneseHoliday(try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 1, day: 13)))))
+    }
+
+    func testJapaneseHolidayRulesIncludeCitizensHoliday() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2015, month: 9, day: 22)))
+        XCTAssertTrue(calendar.isJapaneseHoliday(date))
+    }
+
     func testMonthDatesIncludesEveryDay() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current

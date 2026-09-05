@@ -30,6 +30,26 @@ import SwiftUI
         defaults.removePersistentDomain(forName: name)
     }
 
+    func testAppearanceAndThemeAreMirroredForWidget() throws {
+        let appName = suiteName, widgetName = suiteName
+        let appDefaults = try XCTUnwrap(UserDefaults(suiteName: appName))
+        let widgetDefaults = try XCTUnwrap(UserDefaults(suiteName: widgetName + ".widget"))
+        defer {
+            appDefaults.removePersistentDomain(forName: appName)
+            widgetDefaults.removePersistentDomain(forName: widgetName + ".widget")
+        }
+
+        let store = SettingsStore(defaults: appDefaults, widgetDefaults: widgetDefaults)
+        XCTAssertEqual(widgetDefaults.string(forKey: "settings.appearance"), AppAppearance.system.rawValue)
+        XCTAssertEqual(widgetDefaults.string(forKey: "settings.theme"), AppTheme.classic.rawValue)
+
+        store.appearance = .dark
+        store.theme = .sakura
+
+        XCTAssertEqual(widgetDefaults.string(forKey: "settings.appearance"), AppAppearance.dark.rawValue)
+        XCTAssertEqual(widgetDefaults.string(forKey: "settings.theme"), AppTheme.sakura.rawValue)
+    }
+
     func testTaskAndEventCreationDefaults() throws {
         let store = SettingsStore(defaults: UserDefaults(suiteName: suiteName)!)
         store.defaultTaskPriority = .low; store.newTasksAreAllDay = false; store.defaultReminder = .thirtyMinutes

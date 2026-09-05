@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import WidgetKit
 
 struct GeneralSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
@@ -105,7 +106,11 @@ struct AppearanceSettingsView: View {
                     }
                 }
             }.padding(20)
-        }.themedScreen().navigationTitle("外観")
+        }
+        .themedScreen()
+        .navigationTitle("外観")
+        .onChange(of: settings.appearance) { _, _ in WidgetCenter.shared.reloadTimelines(ofKind: "CalendarTaskTodayWidget") }
+        .onChange(of: settings.theme) { _, _ in WidgetCenter.shared.reloadTimelines(ofKind: "CalendarTaskTodayWidget") }
     }
 }
 

@@ -25,7 +25,7 @@ struct TaskListView: View {
                                                          assignProject: { id in Task { await viewModel.assign(task, to: id) } },
                                                          delete: { Task { await viewModel.delete(id: task.id) } }))
                         .listRowSeparatorTint(palette.border)
-                        .listRowBackground(palette.surface)
+                        .listRowBackground(Color.clear)
                 }.listStyle(.plain)
             }
         }
@@ -48,7 +48,7 @@ struct TaskListView: View {
                             .font(.subheadline.weight(viewModel.selectedSection == section ? .semibold : .regular))
                             .padding(.horizontal, 13).frame(minHeight: 44)
                             .foregroundStyle(viewModel.selectedSection == section ? palette.selectionInk : palette.mutedInk)
-                            .background(viewModel.selectedSection == section ? palette.accent : palette.control,
+                            .background((viewModel.selectedSection == section ? palette.accent : palette.control).opacity(0.62),
                                         in: RoundedRectangle(cornerRadius: palette.controlRadius))
                     }.buttonStyle(ThemedPressStyle())
                         .accessibilityAddTraits(viewModel.selectedSection == section ? .isSelected : [])

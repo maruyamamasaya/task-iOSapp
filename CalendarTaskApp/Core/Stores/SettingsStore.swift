@@ -37,6 +37,7 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         static let theme = "settings.theme", lastBackupDate = "settings.lastBackupDate"
     }
     private let defaults: UserDefaults
+    private let widgetDefaults: UserDefaults?
     private var isLoading = true
     @Published var initialTab: InitialAppTab { didSet { save(initialTab.rawValue, Key.initialTab) } }
     @Published var showCompletedTasksToday: Bool { didSet { save(showCompletedTasksToday, Key.showCompletedToday) } }
@@ -57,12 +58,13 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
     @Published var quickAddSaveImmediately: Bool { didSet { save(quickAddSaveImmediately, Key.quickSave) } }
     @Published var quickAddAlwaysPreview: Bool { didSet { save(quickAddAlwaysPreview, Key.quickPreview) } }
     @Published var defaultReminder: DefaultReminderOption { didSet { save(defaultReminder.rawValue, Key.reminder) } }
-    @Published var appearance: AppAppearance { didSet { save(appearance.rawValue, Key.appearance) } }
-    @Published var theme: AppTheme { didSet { save(theme.rawValue, Key.theme) } }
+    @Published var appearance: AppAppearance { didSet { save(appearance.rawValue, Key.appearance); syncWidgetAppearance() } }
+    @Published var theme: AppTheme { didSet { save(theme.rawValue, Key.theme); syncWidgetAppearance() } }
     @Published var lastBackupDate: Date? { didSet { if !isLoading { defaults.set(lastBackupDate, forKey: Key.lastBackupDate) } } }
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, widgetDefaults: UserDefaults? = nil) {
         self.defaults = defaults
+        self.widgetDefaults = widgetDefaults ?? (defaults === UserDefaults.standard ? Self.appGroupDefaults() : nil)
         initialTab = Self.value(defaults, Key.initialTab, .today); showCompletedTasksToday = Self.bool(defaults, Key.showCompletedToday, true)
         showCompletedTaskListInitially = Self.bool(defaults, Key.showCompletedTaskList, false); hapticFeedbackEnabled = Self.bool(defaults, Key.haptics, true)
         weekStartDay = Self.value(defaults, Key.weekStart, .monday); initialCalendarMode = Self.value(defaults, Key.calendarMode, .month)
@@ -76,6 +78,7 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         quickAddAlwaysPreview = Self.bool(defaults, Key.quickPreview, true); defaultReminder = Self.value(defaults, Key.reminder, .none)
         appearance = Self.value(defaults, Key.appearance, .system); theme = Self.value(defaults, Key.theme, .classic)
         lastBackupDate = defaults.object(forKey: Key.lastBackupDate) as? Date; isLoading = false
+        syncWidgetAppearance()
     }
     func taskCreationDefaults(referenceDate: Date) -> TaskCreationDefaults {
         TaskCreationDefaults(priority: defaultTaskPriority, isAllDay: newTasksAreAllDay, reminderDate: defaultReminder.date(relativeTo: referenceDate))
@@ -87,6 +90,16 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         return EventCreationDefaults(startDate: start, endDate: end, reminderDate: defaultReminder.date(relativeTo: start))
     }
     private func save(_ value: Any, _ key: String) { if !isLoading { defaults.set(value, forKey: key) } }
+    private func syncWidgetAppearance() {
+        guard !isLoading else { return }
+        widgetDefaults?.set(appearance.rawValue, forKey: Key.appearance)
+        widgetDefaults?.set(theme.rawValue, forKey: Key.theme)
+    }
+    private static func appGroupDefaults(bundle: Bundle = .main) -> UserDefaults? {
+        guard let identifier = bundle.object(forInfoDictionaryKey: "AppGroupIdentifier") as? String,
+              !identifier.isEmpty else { return nil }
+        return UserDefaults(suiteName: identifier)
+    }
     private static func bool(_ defaults: UserDefaults, _ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key) }
     private static func value<T: RawRepresentable>(_ defaults: UserDefaults, _ key: String, _ fallback: T) -> T where T.RawValue == String {
         guard let raw = defaults.string(forKey: key), let value = T(rawValue: raw) else { return fallback }; return value
