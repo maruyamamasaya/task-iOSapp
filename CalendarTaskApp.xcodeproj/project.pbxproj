@@ -58,6 +58,7 @@
 		AA0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift */; };
 		AA0000000000000000000024 /* CalendarTaskApp/Core/Stores/ProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000024 /* CalendarTaskApp/Core/Stores/ProjectStore.swift */; };
 		AA0000000000000000000025 /* CalendarTaskApp/DesignSystem/ProjectStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000025 /* CalendarTaskApp/DesignSystem/ProjectStyle.swift */; };
+		D90000000000000000000001 /* CalendarTaskApp/DesignSystem/ThemeStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000002 /* CalendarTaskApp/DesignSystem/ThemeStyle.swift */; };
 		AA0000000000000000000026 /* CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000026 /* CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift */; };
 		AA0000000000000000000027 /* CalendarTaskAppTests/ProjectRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000027 /* CalendarTaskAppTests/ProjectRepositoryTests.swift */; };
 		AA0000000000000000000028 /* CalendarTaskApp/Core/Services/HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000028 /* CalendarTaskApp/Core/Services/HapticService.swift */; };
@@ -188,6 +189,7 @@
 		AB0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Repositories/ProjectRepository.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000024 /* CalendarTaskApp/Core/Stores/ProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Stores/ProjectStore.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000025 /* CalendarTaskApp/DesignSystem/ProjectStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/DesignSystem/ProjectStyle.swift; sourceTree = SOURCE_ROOT; };
+		D90000000000000000000002 /* CalendarTaskApp/DesignSystem/ThemeStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/DesignSystem/ThemeStyle.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000026 /* CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000027 /* CalendarTaskAppTests/ProjectRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/ProjectRepositoryTests.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000028 /* CalendarTaskApp/Core/Services/HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Services/HapticService.swift; sourceTree = SOURCE_ROOT; };
@@ -312,6 +314,7 @@
 				AB0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift */,
 				AB0000000000000000000024 /* CalendarTaskApp/Core/Stores/ProjectStore.swift */,
 				AB0000000000000000000025 /* CalendarTaskApp/DesignSystem/ProjectStyle.swift */,
+				D90000000000000000000002 /* CalendarTaskApp/DesignSystem/ThemeStyle.swift */,
 				AB0000000000000000000026 /* CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift */,
 				AB0000000000000000000027 /* CalendarTaskAppTests/ProjectRepositoryTests.swift */,
 				AB0000000000000000000028 /* CalendarTaskApp/Core/Services/HapticService.swift */,
@@ -513,6 +516,7 @@
 				AA0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift in Sources */,
 				AA0000000000000000000024 /* CalendarTaskApp/Core/Stores/ProjectStore.swift in Sources */,
 				AA0000000000000000000025 /* CalendarTaskApp/DesignSystem/ProjectStyle.swift in Sources */,
+				D90000000000000000000001 /* CalendarTaskApp/DesignSystem/ThemeStyle.swift in Sources */,
 				AA0000000000000000000026 /* CalendarTaskApp/Features/Settings/Views/ProjectManagementView.swift in Sources */,
 				AA0000000000000000000028 /* CalendarTaskApp/Core/Services/HapticService.swift in Sources */,
 				AA0000000000000000000029 /* CalendarTaskApp/Features/Editing/QuickItemActions.swift in Sources */,

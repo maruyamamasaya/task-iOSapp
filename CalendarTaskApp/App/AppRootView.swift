@@ -62,7 +62,7 @@ extension AppTheme {
         switch self { case .classic: 8; case .sakura: 22; case .linen: 12; case .midnight: 14; case .modern: 24 }
     }
     var surfaceOpacity: Double {
-        switch self { case .classic: 0.86; case .sakura: 0.78; case .linen: 0.72; case .midnight: 0.72; case .modern: 0.9 }
+        switch self { case .classic: 0.97; case .sakura: 0.96; case .linen: 0.97; case .midnight: 0.97; case .modern: 1.0 }
     }
     func surfaceColor(for scheme: ColorScheme) -> Color {
         switch (self, scheme) {
@@ -128,7 +128,7 @@ struct AppThemeBackground: View {
 
 struct ThemedScreenModifier: ViewModifier {
     @EnvironmentObject private var settings: SettingsStore
-    func body(content: Content) -> some View { content.scrollContentBackground(.hidden).background { AppThemeBackground(theme: settings.theme) } }
+    func body(content: Content) -> some View { content.fontDesign(settings.theme == .sakura ? .rounded : .default).scrollContentBackground(.hidden).background { AppThemeBackground(theme: settings.theme) } }
 }
 
 struct ThemedSurfaceModifier: ViewModifier {
@@ -137,15 +137,15 @@ struct ThemedSurfaceModifier: ViewModifier {
     let padding: CGFloat
     func body(content: Content) -> some View {
         content
-            .padding(padding)
+            .padding(padding + (settings.theme.contentSpacing - 14) / 2)
             .background(settings.theme.surfaceColor(for: colorScheme).opacity(settings.theme.surfaceOpacity), in: RoundedRectangle(cornerRadius: settings.theme.cornerRadius, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: settings.theme.cornerRadius, style: .continuous).stroke(borderColor, lineWidth: settings.theme == .classic ? 0.8 : 0.55) }
             .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
     }
     private var borderColor: Color { settings.theme == .linen ? Color.brown.opacity(0.16) : settings.theme.accent.opacity(settings.theme == .midnight ? 0.18 : 0.11) }
     private var shadowColor: Color { settings.theme == .modern ? settings.theme.accent.opacity(0.10) : Color.black.opacity(colorScheme == .dark ? 0.18 : 0.07) }
-    private var shadowRadius: CGFloat { settings.theme == .classic ? 2 : settings.theme == .modern ? 18 : 8 }
-    private var shadowY: CGFloat { settings.theme == .classic ? 1 : 4 }
+    private var shadowRadius: CGFloat { settings.theme == .classic ? 2 : settings.theme == .modern ? 10 : settings.theme == .linen ? 2 : 6 }
+    private var shadowY: CGFloat { settings.theme == .classic || settings.theme == .linen ? 1 : 3 }
 }
 
 extension View {

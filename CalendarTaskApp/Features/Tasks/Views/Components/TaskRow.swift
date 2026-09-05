@@ -8,7 +8,7 @@ struct TaskRow: View {
     let edit: () -> Void
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: toggle) { Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle").foregroundStyle(isCompleted ? .secondary : .primary).frame(width: 34, height: 34) }.buttonStyle(.plain)
+            Button(action: toggle) { Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle").foregroundStyle(isCompleted ? .secondary : .primary).frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle())
             Button(action: edit) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
@@ -23,9 +23,9 @@ struct TaskRow: View {
                         if !task.note.isEmpty { Text(task.note).lineLimit(1) }
                     }.font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading)
-            }.buttonStyle(.plain)
+            }.buttonStyle(ThemedPressStyle())
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
     private var isCompleted: Bool { displayedCompletion ?? task.isCompleted }
 }

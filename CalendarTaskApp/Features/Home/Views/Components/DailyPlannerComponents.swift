@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DailyHeader: View {
+    @EnvironmentObject private var settings: SettingsStore
     let date: Date
     let isToday: Bool
     let previous: () -> Void
@@ -14,14 +15,14 @@ struct DailyHeader: View {
             Button(action: returnToToday) {
                 VStack(spacing: 4) {
                     Text(date.formatted(.dateTime.month(.wide).day()))
-                        .font(.system(size: 32, weight: .semibold, design: .rounded))
+                        .font(settings.theme.headingFont(.largeTitle))
                     Text(date.formatted(.dateTime.weekday(.wide))).font(.subheadline).foregroundStyle(.secondary)
                     if !isToday { Text("今日に戻る").font(.caption2).foregroundStyle(.tint) }
                 }
-            }.buttonStyle(.plain)
+            }.buttonStyle(ThemedPressStyle())
             Spacer()
             Button(action: next) { Image(systemName: "chevron.right") }.accessibilityLabel("翌日")
-        }.font(.headline).padding(.vertical, 8)
+        }.buttonStyle(ThemedControlStyle()).font(.headline).padding(.vertical, 12)
     }
 }
 
@@ -43,7 +44,7 @@ struct AllDaySection: View {
                     if let project = projectStore.project(id: event.projectID) { Circle().fill(project.colorIdentifier.color).frame(width: 6, height: 6) }
                     Label(event.title, systemImage: "calendar")
                     if event.recurrenceRule != nil { Image(systemName: "repeat").font(.caption).foregroundStyle(.secondary) }
-                }.frame(maxWidth: .infinity, alignment: .leading) }.buttonStyle(.plain)
+                }.frame(maxWidth: .infinity, alignment: .leading) }.buttonStyle(ThemedPressStyle())
                     .modifier(EventQuickActionsModifier(event: event, edit: { eventActions.edit(event) }, reschedule: { eventActions.reschedule(event, $0) }, duplicate: { eventActions.duplicate(event) }, delete: { eventActions.delete(event) }))
             }
             ForEach(tasks) { task in TaskPlannerRow(task: task, edit: { editTask(task) }, toggle: { toggleTask(task) }, actions: taskActions) }
@@ -94,12 +95,12 @@ struct TimelineItemRow: View {
             VStack(spacing: 0) { Circle().fill(projectColor).frame(width: 5, height: 5); Rectangle().fill(projectColor.opacity(0.35)).frame(width: 1).frame(maxHeight: .infinity) }.frame(width: 18)
             switch item.source {
             case let .event(event):
-                Button { editEvent(event) } label: { itemText(symbol: "calendar") }.buttonStyle(.plain)
+                Button { editEvent(event) } label: { itemText(symbol: "calendar") }.buttonStyle(ThemedPressStyle())
                     .modifier(EventQuickActionsModifier(event: event, edit: { eventActions.edit(event) }, reschedule: { eventActions.reschedule(event, $0) }, duplicate: { eventActions.duplicate(event) }, delete: { eventActions.delete(event) }))
             case let .task(task):
                 HStack(alignment: .top, spacing: 9) {
-                    Button { toggleTask(task) } label: { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 32, height: 32) }.buttonStyle(.plain)
-                    Button { editTask(task) } label: { itemText(symbol: nil) }.buttonStyle(.plain)
+                    Button { toggleTask(task) } label: { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle())
+                    Button { editTask(task) } label: { itemText(symbol: nil) }.buttonStyle(ThemedPressStyle())
                 }
                 .modifier(TaskQuickActionsModifier(task: task, usesCustomSwipe: true, edit: { taskActions.edit(task) }, toggle: { taskActions.toggle(task) }, moveToday: { taskActions.moveToday(task) }, moveTomorrow: { taskActions.moveTomorrow(task) }, reschedule: { taskActions.reschedule(task, $0) }, duplicate: { taskActions.duplicate(task) }, assignProject: { _ in }, delete: { taskActions.delete(task) }))
             }
@@ -152,7 +153,7 @@ private struct TaskPlannerRow: View {
     let task: TaskItem; let edit: () -> Void; let toggle: () -> Void; let actions: TaskRowActions
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
-            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 32, height: 32) }.buttonStyle(.plain)
+            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle())
             Button(action: edit) {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
@@ -163,7 +164,7 @@ private struct TaskPlannerRow: View {
                     if let project = projectStore.project(id: task.projectID) { Text(project.name).font(.caption2).foregroundStyle(.secondary) }
                     if !task.note.isEmpty { Text(task.note).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
-            }.buttonStyle(.plain)
+            }.buttonStyle(ThemedPressStyle())
         }
         .modifier(TaskQuickActionsModifier(task: task, usesCustomSwipe: true, edit: { actions.edit(task) }, toggle: { actions.toggle(task) }, moveToday: { actions.moveToday(task) }, moveTomorrow: { actions.moveTomorrow(task) }, reschedule: { actions.reschedule(task, $0) }, duplicate: { actions.duplicate(task) }, assignProject: { _ in }, delete: { actions.delete(task) }))
     }
@@ -175,19 +176,20 @@ struct DailyNoteSection: View {
         PlannerSection(title: "メモ", symbol: "pencil.line") {
             Button(action: edit) {
                 Text(text.isEmpty ? "メモを書く" : text).font(.subheadline)
-                    .foregroundStyle(text.isEmpty ? .tertiary : .secondary).lineLimit(5)
+                    .foregroundStyle(text.isEmpty ? .secondary : .primary).lineLimit(5)
                     .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
-            }.buttonStyle(.plain)
+            }.buttonStyle(ThemedPressStyle())
         }
     }
 }
 
 struct PlannerSection<Content: View>: View {
+    @EnvironmentObject private var settings: SettingsStore
     let title: String; let symbol: String; @ViewBuilder let content: Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol).font(.headline).foregroundStyle(.primary)
-            Rectangle().fill(Color.accentColor.opacity(0.28)).frame(height: 1)
+        VStack(alignment: .leading, spacing: settings.theme.contentSpacing) {
+            Label(title, systemImage: symbol).font(settings.theme.headingFont(.headline)).foregroundStyle(.primary)
+            Rectangle().fill(Color.accentColor.opacity(0.16)).frame(height: 1)
             content
         }
         .themedSurface()
@@ -196,5 +198,5 @@ struct PlannerSection<Content: View>: View {
 
 private struct PlannerEmptyText: View {
     let text: String
-    var body: some View { Text(text).font(.subheadline).foregroundStyle(.tertiary).padding(.vertical, 5) }
+    var body: some View { Text(text).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 5) }
 }

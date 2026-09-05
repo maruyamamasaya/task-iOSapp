@@ -17,7 +17,7 @@ struct MonthCalendarView: View {
     var body: some View {
         VStack(spacing: 8) {
             LazyVGrid(columns: columns, spacing: 0) {
-                ForEach(weekdaySymbols, id: \.self) { Text($0).font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 7) }
+                ForEach(weekdaySymbols, id: \.self) { Text($0).font(.caption2.weight(.medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 7) }
                 ForEach(dates, id: \.self) { date in
                     CalendarDayCell(date: date, isToday: settings.highlightToday && isToday(date), isSelected: isSelected(date),
                                     isInDisplayedMonth: isInDisplayedMonth(date), hasEvent: hasEvent(date),
@@ -27,7 +27,7 @@ struct MonthCalendarView: View {
                         .overlay(alignment: .top) { Divider() }
                 }
             }
-            Text("ドットは予定・未完了タスクのプロジェクト色です")
+            Text("● 予定  ▫ 未完了タスク · 下段のドットはプロジェクト色")
                 .font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
         }
     }

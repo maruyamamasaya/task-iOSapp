@@ -49,27 +49,20 @@ private struct WeekHeader: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(dates, id: \.self) { date in
-                Button { select(date) } label: {
-                    VStack(spacing: 6) {
-                        Text(date.formatted(.dateTime.weekday(.narrow))).font(.caption2).foregroundStyle(.secondary)
-                        Text(date.formatted(.dateTime.day())).font(.subheadline.weight(settings.highlightToday && isToday(date) ? .semibold : .regular))
-                            .frame(width: 30, height: 30)
-                            .background { if settings.highlightToday && isToday(date) { Circle().fill(Color.primary.opacity(0.09)) } }
-                            .overlay { if isSelected(date) { Circle().stroke(Color.accentColor, lineWidth: 1.5) } }
-                        HStack(spacing: 2) {
-                            ForEach(Array(colors(for: date).prefix(3).enumerated()), id: \.offset) { _, color in
-                                Circle().fill(color).frame(width: 4, height: 4)
-                            }
-                        }.frame(height: 5)
-                    }.frame(maxWidth: .infinity)
-                }.buttonStyle(.plain).accessibilityLabel(date.formatted(date: .complete, time: .omitted))
+                VStack(spacing: 2) {
+                    Text(date.formatted(.dateTime.weekday(.narrow)))
+                        .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    CalendarDayCell(date: date, isToday: settings.highlightToday && isToday(date),
+                                    isSelected: isSelected(date), isInDisplayedMonth: true,
+                                    hasEvent: hasEvent(date), hasIncompleteTask: hasTask(date),
+                                    projectColors: colors(for: date)) { select(date) }
+                }
             }
         }
     }
 
     private func colors(for date: Date) -> [Color] {
         let colors = (settings.showProjectColorDots ? projectIDs(date) : []).map { projectStore.project(id: $0)?.colorIdentifier.color ?? .secondary }
-        if colors.isEmpty, hasEvent(date) || hasTask(date) { return [.secondary] }
         return colors
     }
 }

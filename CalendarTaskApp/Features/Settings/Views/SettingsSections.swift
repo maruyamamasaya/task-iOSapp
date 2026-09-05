@@ -86,7 +86,7 @@ struct AppearanceSettingsView: View {
                     Text("手帳テーマ").font(.headline)
                     ForEach(AppTheme.allCases) { theme in
                         Button { settings.theme = theme } label: { ThemePreviewCard(theme: theme, isSelected: settings.theme == theme) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(ThemedPressStyle())
                             .accessibilityLabel("\(theme.rawValue)、\(theme.subtitle)")
                             .accessibilityAddTraits(settings.theme == theme ? .isSelected : [])
                     }
@@ -107,7 +107,7 @@ private struct ThemePreviewCard: View {
                 Image(systemName: theme.symbol).font(.title2).foregroundStyle(theme.accent)
                     .frame(width: 42, height: 42).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(theme.rawValue).font(.headline)
+                    Text(theme.rawValue).font(theme.headingFont(.headline))
                     Text(theme.subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
