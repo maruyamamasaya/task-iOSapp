@@ -46,8 +46,18 @@ CalendarTaskApp は、予定・タスク・日ごとのメモを一つの手帳�
 
 - ロジック変更には同じレイヤーの unit test を追加する。Repository は CRUD と変換、Store は状態と副作用、parser / date / recurrence は境界値をテストする。
 - DI 可能性を保ち、テストで本番 SwiftData singleton、通知権限、WidgetCenter に依存させない。
-- 実装後は最低限 `xcodebuild -project CalendarTaskApp.xcodeproj -scheme CalendarTaskApp -sdk iphonesimulator build` と `xcodebuild -project CalendarTaskApp.xcodeproj -scheme CalendarTaskApp -sdk iphonesimulator test` を実行する。変更対象が Widget なら Widget target も build する。
+- 実装後は最低限 `xcodebuild -project CalendarTaskApp.xcodeproj -scheme CalendarTaskApp -sdk iphonesimulator build` を実行する。変更内容の確認にビルドだけで十分なら `xcodebuild test` は実行しない。変更対象が Widget なら Widget target も build する。
 - UI変更時は Home / Calendar / Tasks / Settings、作成・編集・削除、QuickAdd、空状態とエラー状態を該当範囲で目視確認する。永続化変更時は再起動後の読込、移行、バックアップ、Widget共有を確認する。
 - `git diff` でスコープ外変更がないことも確認する。
+
+### Xcode のストレージ管理
+
+- テストが必要な場合は、既存の Simulator を1台だけ使用する。新しい Simulator、テスト端末、ランタイムを必要なく作成・ダウンロードしない。
+- テストでは並列実行を無効にし、`-parallel-testing-enabled NO` と `-maximum-parallel-testing-workers 1` を指定する。同じテストを理由なく繰り返さない。
+- テスト開始前に `~/Library/Developer/XCTestDevices` の既存フォルダ一覧と容量を記録する。
+- テスト完了後、そのタスクによって新規作成された `XCTestDevices` 内の UUID フォルダだけを削除する。以前から存在するデータは削除しない。
+- Xcode、Simulator、またはテスト処理が実行中の場合は削除せず、状況を報告する。
+- DerivedData など、ほかの Xcode データを削除する場合は事前にユーザーへ確認を求める。
+- 最後に、作成・削除したテスト端末の数と、`XCTestDevices` に残っている容量を報告する。
 
 README は利用者が認識すべき機能・セットアップ・前提が変わる場合に更新する。`docs/architecture.md` は依存方向、レイヤー責務、DI、永続化や target 間共有の設計判断が変わる場合に更新する。実装詳細だけの変更でドキュメントを水増ししない。
