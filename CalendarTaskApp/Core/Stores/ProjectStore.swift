@@ -19,3 +19,22 @@ import Combine
     func setArchived(_ archived: Bool, id: UUID) async { do { try await repository.archiveProject(id: id, archived: archived); await load() } catch { errorMessage = error.localizedDescription } }
     func delete(id: UUID) async { do { try await repository.deleteProject(id: id); await load() } catch { errorMessage = error.localizedDescription } }
 }
+
+@MainActor final class TagStore: ObservableObject {
+    @Published private(set) var tags: [AppTag] = []
+    @Published private(set) var errorMessage: String?
+    private let repository: any TagRepository
+    init(repository: any TagRepository) { self.repository = repository }
+    func load() async {
+        do { tags = try await repository.fetchTags(); errorMessage = nil }
+        catch { errorMessage = error.localizedDescription }
+    }
+    func save(_ tag: AppTag) async {
+        do { try await repository.saveTag(tag); await load() }
+        catch { errorMessage = error.localizedDescription }
+    }
+    func delete(id: UUID) async {
+        do { try await repository.deleteTag(id: id); await load() }
+        catch { errorMessage = error.localizedDescription }
+    }
+}

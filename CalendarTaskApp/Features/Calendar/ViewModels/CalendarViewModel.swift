@@ -4,6 +4,7 @@ import Combine
 enum CalendarDisplayMode: String, CaseIterable, Identifiable {
     case month = "月"
     case week = "週"
+    case day = "日"
     var id: Self { self }
 }
 
@@ -32,13 +33,13 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
         self.dailyNoteStore = dailyNoteStore; self.taskCompletionStore = taskCompletionStore
         self.recurrenceCalculator = RecurrenceCalculator(calendar: calendar); self.dateProvider = dateProvider; self.settingsStore = settingsStore; self.haptics = hapticService ?? SystemHapticService()
         var configuredCalendar = calendar; configuredCalendar.firstWeekday = settingsStore.weekStartDay.calendarWeekday; self.calendar = configuredCalendar
-        displayMode = settingsStore.initialCalendarMode == .month ? .month : .week
+        displayMode = Self.displayMode(for: settingsStore.initialCalendarMode)
         displayedMonth = dateProvider.now; selectedDate = dateProvider.now
         taskStore.$tasks.sink { [weak self] in self?.tasks = $0 }.store(in: &cancellables)
         calendarStore.$events.sink { [weak self] in self?.events = $0 }.store(in: &cancellables)
         taskCompletionStore.$completions.sink { [weak self] in self?.completions = $0 }.store(in: &cancellables)
         settingsStore.$weekStartDay.dropFirst().sink { [weak self] value in self?.calendar.firstWeekday = value.calendarWeekday; self?.objectWillChange.send() }.store(in: &cancellables)
-        settingsStore.$initialCalendarMode.dropFirst().sink { [weak self] value in self?.displayMode = value == .month ? .month : .week }.store(in: &cancellables)
+        settingsStore.$initialCalendarMode.dropFirst().sink { [weak self] value in self?.displayMode = Self.displayMode(for: value) }.store(in: &cancellables)
     }
     var monthDates: [Date] { calendar.monthGridDates(containing: displayedMonth) }
     var weekDates: [Date] { calendar.weekDates(containing: selectedDate) }
@@ -73,6 +74,15 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
         }
         return "\(first.formatted(.dateTime.month().day())) – \(last.formatted(.dateTime.month().day()))"
     }
+    var dayTitle: String { selectedDate.formatted(.dateTime.year().month(.wide).day().weekday(.wide)) }
+
+    static func displayMode(for initialMode: InitialCalendarMode) -> CalendarDisplayMode {
+        switch initialMode {
+        case .month: .month
+        case .week: .week
+        case .day: .day
+        }
+    }
 
     func isToday(_ date: Date) -> Bool { calendar.isDate(date, inSameDayAs: dateProvider.now) }
     func isSelected(_ date: Date) -> Bool { calendar.isDate(date, inSameDayAs: selectedDate) }
@@ -96,6 +106,11 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
     func moveMonth(by value: Int) async {
         displayedMonth = calendar.date(byAdding: .month, value: value, to: displayedMonth) ?? displayedMonth
         selectedDate = calendar.dateInterval(of: .month, for: displayedMonth)?.start ?? displayedMonth
+        await loadSelectedNote()
+    }
+    func moveDay(by value: Int) async {
+        selectedDate = calendar.date(byAdding: .day, value: value, to: selectedDate) ?? selectedDate
+        displayedMonth = selectedDate
         await loadSelectedNote()
     }
     func moveWeek(by value: Int) async {

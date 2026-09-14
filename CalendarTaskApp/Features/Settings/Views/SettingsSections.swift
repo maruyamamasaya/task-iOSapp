@@ -166,6 +166,7 @@ struct DataSettingsView: View {
         Section("データ概要") {
             LabeledContent("タスク", value: "\(service.summary.tasks)件"); LabeledContent("予定", value: "\(service.summary.events)件")
             LabeledContent("メモ", value: "\(service.summary.notes)件"); LabeledContent("Project", value: "\(service.summary.projects)件")
+            LabeledContent("タグ", value: "\(service.summary.tags)件")
             LabeledContent("完了履歴", value: "\(service.summary.completions)件")
         }
         Section("バックアップ") {

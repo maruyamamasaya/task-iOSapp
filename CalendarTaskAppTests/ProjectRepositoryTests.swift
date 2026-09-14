@@ -69,4 +69,33 @@ import SwiftData
         await viewModel.load(); viewModel.selectedSection = .today; viewModel.projectFilter = .project(projectID)
         XCTAssertEqual(viewModel.visibleTasks.map(\.title), ["仕事"])
     }
+
+    func testTagLifecycleAndTaskAssignments() async throws {
+        let persistence = SwiftDataPersistence(inMemory: true)
+        let tags = SwiftDataTagRepository(container: persistence.container)
+        let tasks = SwiftDataTaskRepository(container: persistence.container)
+        var tag = AppTag(id: UUID(), name: "重要")
+        try await tags.saveTag(tag)
+        var fetchedTags = try await tags.fetchTags()
+        XCTAssertEqual(fetchedTags, [tag])
+
+        let now = Date.now
+        let task = TaskItem(id: UUID(), title: "確認", note: "", startDate: now, dueDate: now,
+                            isAllDay: true, isCompleted: false, completedAt: nil, priority: .normal,
+                            reminderDate: nil, recurrenceRule: nil, projectID: nil, category: nil,
+                            tags: [tag], createdAt: now, updatedAt: now)
+        try await tasks.addTask(task)
+        var fetchedTasks = try await tasks.fetchTasks()
+        XCTAssertEqual(fetchedTasks.first?.tags, [tag])
+
+        tag.name = "最優先"
+        try await tags.saveTag(tag)
+        fetchedTasks = try await tasks.fetchTasks()
+        XCTAssertEqual(fetchedTasks.first?.tags.first?.name, "最優先")
+        try await tags.deleteTag(id: tag.id)
+        fetchedTags = try await tags.fetchTags()
+        fetchedTasks = try await tasks.fetchTasks()
+        XCTAssertTrue(fetchedTags.isEmpty)
+        XCTAssertTrue(fetchedTasks.first?.tags.isEmpty == true)
+    }
 }

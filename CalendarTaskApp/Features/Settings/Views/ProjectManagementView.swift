@@ -101,3 +101,50 @@ private struct ProjectEditorView: View {
         Task { await store.save(value); dismiss() }
     }
 }
+
+struct TagManagementView: View {
+    @EnvironmentObject private var store: TagStore
+    @State private var editingTag: AppTag?
+    @State private var createsTag = false
+    var body: some View {
+        List {
+            ForEach(store.tags) { tag in
+                Button { editingTag = tag } label: {
+                    HStack { Label(tag.name, systemImage: "tag"); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary) }
+                }.buttonStyle(.plain)
+            }
+            if store.tags.isEmpty { Text("タグはまだありません").foregroundStyle(.secondary) }
+        }
+        .navigationTitle("タグ")
+        .toolbar { Button { createsTag = true } label: { Image(systemName: "plus") } }
+        .sheet(isPresented: $createsTag) { TagEditorView(tag: nil) }
+        .sheet(item: $editingTag) { TagEditorView(tag: $0) }
+        .task { await store.load() }
+    }
+}
+
+private struct TagEditorView: View {
+    @EnvironmentObject private var store: TagStore
+    @Environment(\.dismiss) private var dismiss
+    let tag: AppTag?
+    @State private var name: String
+    @State private var confirmsDeletion = false
+    init(tag: AppTag?) { self.tag = tag; _name = State(initialValue: tag?.name ?? "") }
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("タグ名", text: $name)
+                if tag != nil { Button("削除", role: .destructive) { confirmsDeletion = true } }
+            }
+            .navigationTitle(tag == nil ? "タグを作成" : "タグを編集").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { save() }.disabled(name.trimmed.isEmpty) }
+            }
+            .confirmationDialog("タグを削除しますか？", isPresented: $confirmsDeletion, titleVisibility: .visible) {
+                Button("削除", role: .destructive) { if let tag { Task { await store.delete(id: tag.id); dismiss() } } }
+            } message: { Text("このタグは既存のタスクからも外れます。") }
+        }
+    }
+    private func save() { Task { await store.save(AppTag(id: tag?.id ?? UUID(), name: name.trimmed)); dismiss() } }
+}

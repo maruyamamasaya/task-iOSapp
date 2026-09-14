@@ -11,10 +11,11 @@ import SwiftData
     let notificationService: any NotificationService
     let taskCompletionStore: TaskCompletionStore
     let projectStore: ProjectStore
+    let tagStore: TagStore
     let hapticService: any HapticService
     let backupService: BackupService
 
-    init(modelContainer: ModelContainer, taskRepository: any TaskRepository, calendarRepository: any CalendarRepository, dailyNoteRepository: any DailyNoteRepository, taskCompletionRepository: any TaskCompletionRepository, projectRepository: any ProjectRepository, dateProvider: any DateProviding, settingsStore: SettingsStore? = nil, notificationService: any NotificationService = NoopNotificationService(), widgetRefreshService: any WidgetRefreshService = NoopWidgetRefreshService()) {
+    init(modelContainer: ModelContainer, taskRepository: any TaskRepository, calendarRepository: any CalendarRepository, dailyNoteRepository: any DailyNoteRepository, taskCompletionRepository: any TaskCompletionRepository, projectRepository: any ProjectRepository, tagRepository: any TagRepository, dateProvider: any DateProviding, settingsStore: SettingsStore? = nil, notificationService: any NotificationService = NoopNotificationService(), widgetRefreshService: any WidgetRefreshService = NoopWidgetRefreshService()) {
         let settingsStore = settingsStore ?? SettingsStore()
         taskStore = TaskStore(repository: taskRepository, notificationService: notificationService, widgetRefreshService: widgetRefreshService)
         calendarStore = CalendarStore(repository: calendarRepository, notificationService: notificationService, widgetRefreshService: widgetRefreshService)
@@ -24,9 +25,10 @@ import SwiftData
         self.notificationService = notificationService
         taskCompletionStore = TaskCompletionStore(repository: taskCompletionRepository, notificationService: notificationService, widgetRefreshService: widgetRefreshService)
         projectStore = ProjectStore(repository: projectRepository)
+        tagStore = TagStore(repository: tagRepository)
         hapticService = SystemHapticService(isEnabled: { settingsStore.hapticFeedbackEnabled })
         backupService = BackupService(container: modelContainer, settingsStore: settingsStore, taskStore: taskStore, calendarStore: calendarStore,
-                                      dailyNoteStore: dailyNoteStore, projectStore: projectStore, completionStore: taskCompletionStore,
+                                      dailyNoteStore: dailyNoteStore, projectStore: projectStore, tagStore: tagStore, completionStore: taskCompletionStore,
                                       notificationService: notificationService, widgetRefreshService: widgetRefreshService)
     }
 
@@ -42,6 +44,7 @@ import SwiftData
             dailyNoteRepository: SwiftDataDailyNoteRepository(container: persistence.container),
             taskCompletionRepository: SwiftDataTaskCompletionRepository(container: persistence.container),
             projectRepository: SwiftDataProjectRepository(container: persistence.container),
+            tagRepository: SwiftDataTagRepository(container: persistence.container),
             dateProvider: dates,
             notificationService: notifications,
             widgetRefreshService: widgetRefresh

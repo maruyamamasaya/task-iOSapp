@@ -113,6 +113,7 @@ private struct EditorScaffold<Content: View>: View {
 
 struct TaskFormView: View {
     @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var tagStore: TagStore
     @EnvironmentObject private var settings: SettingsStore
     let original: TaskItem?
     let isCreating: Bool
@@ -123,6 +124,7 @@ struct TaskFormView: View {
     @State private var reminderDate: Date?
     @State private var recurrenceOption: RecurrenceOption
     @State private var projectID: UUID?
+    @State private var selectedTagIDs: Set<UUID>
     @FocusState private var titleFocused: Bool
     @State private var appliedDefaults = false
 
@@ -134,6 +136,7 @@ struct TaskFormView: View {
         _reminderDate = State(initialValue: item?.reminderDate)
         _recurrenceOption = State(initialValue: RecurrenceOption(rule: item?.recurrenceRule))
         _projectID = State(initialValue: item?.projectID)
+        _selectedTagIDs = State(initialValue: Set(item?.tags.map(\.id) ?? []))
     }
     var body: some View {
         EditorScaffold(title: isCreating ? "タスクを書く" : "タスクを編集", canSave: !title.trimmed.isEmpty,
@@ -155,6 +158,14 @@ struct TaskFormView: View {
                     }
                 }
             }
+            ruledSection("タグ") {
+                if tagStore.tags.isEmpty { Text("設定からタグを作成できます").foregroundStyle(.secondary) }
+                ForEach(tagStore.tags) { tag in
+                    Toggle(tag.name, isOn: Binding(get: { selectedTagIDs.contains(tag.id) }, set: { selected in
+                        if selected { selectedTagIDs.insert(tag.id) } else { selectedTagIDs.remove(tag.id) }
+                    }))
+                }
+            }
             ruledSection("リマインダー") { ReminderEditor(reminderDate: $reminderDate, referenceDate: date) }
             ruledSection("繰り返し") { Picker("繰り返し", selection: $recurrenceOption) { ForEach(RecurrenceOption.allCases) { Text($0.rawValue).tag($0) } } }
         }.onAppear {
@@ -170,7 +181,7 @@ struct TaskFormView: View {
         let value = TaskItem(id: original?.id ?? UUID(), title: title.trimmed, note: note, startDate: date, dueDate: date,
                              isAllDay: isAllDay, isCompleted: original?.isCompleted ?? false, completedAt: original?.completedAt,
                              priority: priority, reminderDate: reminderDate, recurrenceRule: recurrenceOption.rule, projectID: projectID,
-                             category: original?.category, tags: original?.tags ?? [],
+                             category: original?.category, tags: tagStore.tags.filter { selectedTagIDs.contains($0.id) },
                              createdAt: original?.createdAt ?? now, updatedAt: now)
         return await onSave(value)
     }
@@ -178,7 +189,7 @@ struct TaskFormView: View {
         guard let original else { return !title.trimmed.isEmpty || !note.isEmpty || projectID != nil || reminderDate != nil }
         return title != original.title || note != original.note || date != (original.dueDate ?? original.startDate) ||
             isAllDay != original.isAllDay || priority != original.priority || reminderDate != original.reminderDate ||
-            recurrenceOption.rule != original.recurrenceRule || projectID != original.projectID
+            recurrenceOption.rule != original.recurrenceRule || projectID != original.projectID || selectedTagIDs != Set(original.tags.map(\.id))
     }
 }
 

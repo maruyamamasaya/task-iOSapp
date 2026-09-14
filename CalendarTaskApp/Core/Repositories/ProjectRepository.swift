@@ -7,3 +7,9 @@ protocol ProjectRepository: Sendable {
     func archiveProject(id: UUID, archived: Bool) async throws
     func deleteProject(id: UUID) async throws
 }
+
+protocol TagRepository: Sendable {
+    func fetchTags() async throws -> [AppTag]
+    func saveTag(_ tag: AppTag) async throws
+    func deleteTag(id: UUID) async throws
+}

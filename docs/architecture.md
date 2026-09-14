@@ -40,7 +40,7 @@ Repository をラップする共有 application state。ロードと CRUD 後の
 
 `AppDependencies.live()` が次を一度だけ組み立て、`AppRootView` が各 ViewModel に必要な Store / Service を渡す。
 
-- SwiftData: Task、CalendarEvent、DailyNote、TaskCompletion、Project の各 Repository。
+- SwiftData: Task、CalendarEvent、DailyNote、TaskCompletion、Project、Tag の各 Repository。
 - Store: Task、Calendar、DailyNote、TaskCompletion、Project、Settings。
 - Service: system date、UserNotifications、haptic、Widget refresh、backup。
 - Root UI: Today (Home)、Calendar、Tasks、Settings の四つの Tab と各 `NavigationStack`。
@@ -55,7 +55,7 @@ Repository をラップする共有 application state。ロードと CRUD 後の
 - `TaskCompletion`: 繰り返しタスクの occurrence 単位の完了記録。
 - `Project`: 色・icon と archive 状態を持つ分類。
 
-現在の本番永続化は SwiftData。Settings は UserDefaults、バックアップは SwiftData domain data の JSON export / import を扱う。SwiftData Entity には現時点で Task の category / tags、CalendarEvent の category / externalEventID が保存されず、domain への復元時に空値になる。これらを永続化する変更は schema・移行・バックアップ・テストを伴う独立タスクとして扱う。
+現在の本番永続化は SwiftData。Settings は UserDefaults、バックアップは SwiftData domain data の JSON export / import を扱う。タグ一覧は `TagEntity`、タスクへの割り当ては `TaskEntity.tagsData` に保存する。SwiftData Entity には現時点で Task の category、CalendarEvent の category / externalEventID が保存されず、domain への復元時に空値になる。これらを永続化する変更は schema・移行・バックアップ・テストを伴う独立タスクとして扱う。
 
 ## 5. Widget / App Intent の共有
 

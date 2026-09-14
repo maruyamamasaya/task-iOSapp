@@ -3,7 +3,7 @@ import Combine
 
 enum InitialAppTab: String, CaseIterable, Identifiable { case today = "今日", calendar = "カレンダー", tasks = "タスク"; var id: Self { self } }
 enum WeekStartDay: String, CaseIterable, Identifiable { case monday = "月曜", sunday = "日曜"; var id: Self { self }; var calendarWeekday: Int { self == .monday ? 2 : 1 } }
-enum InitialCalendarMode: String, CaseIterable, Identifiable { case month = "月", week = "週"; var id: Self { self } }
+enum InitialCalendarMode: String, CaseIterable, Identifiable { case month = "月", week = "週", day = "日"; var id: Self { self } }
 enum SettingsTaskSort: String, CaseIterable, Identifiable { case date = "日付順", priority = "優先度順", createdAt = "作成日時順"; var id: Self { self } }
 enum SettingsTaskSection: String, CaseIterable, Identifiable { case inbox = "Inbox", today = "今日", scheduled = "期限あり", noDeadline = "期限なし", completed = "完了済み"; var id: Self { self } }
 enum QuickAddDefaultType: String, CaseIterable, Identifiable { case task = "タスク", event = "予定"; var id: Self { self } }

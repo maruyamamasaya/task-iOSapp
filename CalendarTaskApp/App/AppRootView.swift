@@ -28,11 +28,13 @@ struct AppRootView: View {
                 .tag(AppRoute.settings)
         }
         .environmentObject(dependencies.projectStore)
+        .environmentObject(dependencies.tagStore)
         .environmentObject(dependencies.settingsStore)
         .tint(settings.theme.accent)
         .preferredColorScheme(colorScheme)
         .task {
             await dependencies.projectStore.load()
+            await dependencies.tagStore.load()
             await dependencies.rescheduleNotificationsIfAuthorized()
         }
         .onChange(of: scenePhase) { _, phase in

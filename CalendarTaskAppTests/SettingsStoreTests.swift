@@ -15,16 +15,20 @@ import SwiftUI
         XCTAssertEqual(store.defaultTaskPriority, .normal)
         XCTAssertEqual(store.appearance, .system)
         XCTAssertEqual(store.theme, .classic)
+        XCTAssertEqual(CalendarViewModel.displayMode(for: .month), .month)
+        XCTAssertEqual(CalendarViewModel.displayMode(for: .week), .week)
+        XCTAssertEqual(CalendarViewModel.displayMode(for: .day), .day)
     }
 
     func testSettingsPersistAndReload() {
         let name = suiteName, defaults = UserDefaults(suiteName: name)!
         var store = SettingsStore(defaults: defaults)
-        store.initialTab = .tasks; store.weekStartDay = .sunday; store.appearance = .dark; store.theme = .midnight
+        store.initialTab = .tasks; store.weekStartDay = .sunday; store.initialCalendarMode = .day; store.appearance = .dark; store.theme = .midnight
         store.defaultTaskPriority = .high; store.defaultEventDurationMinutes = 90
         store = SettingsStore(defaults: defaults)
         XCTAssertEqual(store.initialTab, .tasks); XCTAssertEqual(AppRootView.route(for: store.initialTab), .tasks)
         XCTAssertEqual(store.weekStartDay, .sunday); XCTAssertEqual(store.appearance, .dark)
+        XCTAssertEqual(store.initialCalendarMode, .day)
         XCTAssertEqual(store.theme, .midnight)
         XCTAssertEqual(store.defaultTaskPriority, .high); XCTAssertEqual(store.defaultEventDurationMinutes, 90)
         defaults.removePersistentDomain(forName: name)

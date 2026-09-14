@@ -11,9 +11,9 @@ struct CalendarView: View {
                 Picker("表示", selection: $viewModel.displayMode) {
                     ForEach(CalendarDisplayMode.allCases) { Text($0.rawValue).tag($0) }
                 }.pickerStyle(.segmented).frame(maxWidth: 220)
-                CalendarHeader(month: viewModel.displayedMonth, title: viewModel.displayMode == .week ? viewModel.weekTitle : nil,
-                               previous: { Task { if viewModel.displayMode == .month { await viewModel.moveMonth(by: -1) } else { await viewModel.moveWeek(by: -1) } } },
-                               next: { Task { if viewModel.displayMode == .month { await viewModel.moveMonth(by: 1) } else { await viewModel.moveWeek(by: 1) } } },
+                CalendarHeader(month: viewModel.displayedMonth, title: headerTitle,
+                               previous: { Task { await move(by: -1) } },
+                               next: { Task { await move(by: 1) } },
                                today: { Task { await viewModel.returnToToday() } })
                 if viewModel.displayMode == .month {
                     MonthCalendarView(dates: viewModel.monthDates, weekdaySymbols: viewModel.weekdaySymbols,
@@ -27,13 +27,20 @@ struct CalendarView: View {
                                            editEvent: eventActions.edit, editTask: taskActions.edit,
                                            editNote: { editorRoute = .note(viewModel.selectedNote, viewModel.selectedDate) })
                         .themedSurface()
-                } else {
+                } else if viewModel.displayMode == .week {
                     WeekCalendarView(dates: viewModel.weekDates, selectedDate: viewModel.selectedDate,
                                      allDayEvents: viewModel.selectedAllDayEvents, allDayTasks: viewModel.selectedAllDayTasks,
                                      timelineItems: viewModel.selectedTimelineItems, unscheduledTasks: viewModel.selectedUnscheduledTasks, now: viewModel.now,
                                      isToday: viewModel.isToday, isSelected: viewModel.isSelected, hasEvent: viewModel.hasEvents, hasTask: viewModel.hasIncompleteTasks,
                                      projectIDs: viewModel.projectIDs, select: { date in Task { await viewModel.select(date) } },
                                      taskActions: taskActions, eventActions: eventActions)
+                } else {
+                    DayCalendarView(date: viewModel.selectedDate,
+                                    allDayEvents: viewModel.selectedAllDayEvents, allDayTasks: viewModel.selectedAllDayTasks,
+                                    timelineItems: viewModel.selectedTimelineItems, unscheduledTasks: viewModel.selectedUnscheduledTasks,
+                                    note: viewModel.selectedNote, now: viewModel.now, isToday: viewModel.isToday(viewModel.selectedDate),
+                                    editNote: { editorRoute = .note(viewModel.selectedNote, viewModel.selectedDate) },
+                                    taskActions: taskActions, eventActions: eventActions)
                 }
             }.padding(.horizontal, 20).padding(.vertical, 16)
         }
@@ -55,6 +62,20 @@ struct CalendarView: View {
             QuickAddView(defaultDate: viewModel.selectedDate, add: viewModel.saveQuickAdd) { pendingQuickAddDraft = $0 }
         }
         .task { await viewModel.load() }
+    }
+    private var headerTitle: String? {
+        switch viewModel.displayMode {
+        case .month: nil
+        case .week: viewModel.weekTitle
+        case .day: viewModel.dayTitle
+        }
+    }
+    private func move(by value: Int) async {
+        switch viewModel.displayMode {
+        case .month: await viewModel.moveMonth(by: value)
+        case .week: await viewModel.moveWeek(by: value)
+        case .day: await viewModel.moveDay(by: value)
+        }
     }
     private var taskActions: TaskRowActions {
         TaskRowActions(edit: { editorRoute = .task(viewModel.sourceTask(for: $0)) },

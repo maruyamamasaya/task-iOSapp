@@ -9,15 +9,17 @@ import SwiftData
     private let calendarStore: CalendarStore
     private let dailyNoteStore: DailyNoteStore
     private let projectStore: ProjectStore
+    private let tagStore: TagStore?
     private let completionStore: TaskCompletionStore
     private let notificationService: any NotificationService
     private let widgetRefreshService: any WidgetRefreshService
 
     init(container: ModelContainer, settingsStore: SettingsStore, taskStore: TaskStore, calendarStore: CalendarStore,
-         dailyNoteStore: DailyNoteStore, projectStore: ProjectStore, completionStore: TaskCompletionStore,
+         dailyNoteStore: DailyNoteStore, projectStore: ProjectStore, tagStore: TagStore? = nil, completionStore: TaskCompletionStore,
          notificationService: any NotificationService = NoopNotificationService(), widgetRefreshService: any WidgetRefreshService = NoopWidgetRefreshService()) {
         self.container = container; self.settingsStore = settingsStore; self.taskStore = taskStore; self.calendarStore = calendarStore
         self.dailyNoteStore = dailyNoteStore; self.projectStore = projectStore; self.completionStore = completionStore
+        self.tagStore = tagStore
         self.notificationService = notificationService; self.widgetRefreshService = widgetRefreshService
     }
 
@@ -27,6 +29,7 @@ import SwiftData
                                     events: try context.fetchCount(FetchDescriptor<CalendarEventEntity>()),
                                     notes: try context.fetchCount(FetchDescriptor<DailyNoteEntity>()),
                                     projects: try context.fetchCount(FetchDescriptor<ProjectEntity>()),
+                                    tags: try context.fetchCount(FetchDescriptor<TagEntity>()),
                                     completions: try context.fetchCount(FetchDescriptor<TaskCompletionEntity>()))
     }
 
@@ -39,6 +42,7 @@ import SwiftData
                                dailyNotes: try context.fetch(FetchDescriptor<DailyNoteEntity>()).map { BackupDailyNote(value: $0.domain) },
                                projects: try context.fetch(FetchDescriptor<ProjectEntity>()).map { BackupProject(value: $0.domain) },
                                taskCompletions: try context.fetch(FetchDescriptor<TaskCompletionEntity>()).map { BackupTaskCompletion(value: $0.domain) },
+                               tags: try context.fetch(FetchDescriptor<TagEntity>()).map(\.domain),
                                settings: settingsStore.backupSettings())
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]; encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(backup)
@@ -68,7 +72,11 @@ import SwiftData
             try context.fetch(FetchDescriptor<CalendarEventEntity>()).forEach(context.delete)
             try context.fetch(FetchDescriptor<DailyNoteEntity>()).forEach(context.delete)
             try context.fetch(FetchDescriptor<ProjectEntity>()).forEach(context.delete)
+            try context.fetch(FetchDescriptor<TagEntity>()).forEach(context.delete)
             backup.projects.forEach { context.insert(ProjectEntity($0.value)) }
+            let tagsByID = backup.tasks.flatMap { $0.value.tags }.reduce(into: [UUID: AppTag]()) { $0[$1.id] = $1 }
+            let restoredTags = backup.tags ?? Array(tagsByID.values)
+            restoredTags.forEach { context.insert(TagEntity($0)) }
             backup.tasks.forEach { context.insert(TaskEntity($0.value)) }
             backup.events.forEach { context.insert(CalendarEventEntity($0.value)) }
             backup.dailyNotes.forEach { context.insert(DailyNoteEntity($0.value)) }
@@ -83,7 +91,7 @@ import SwiftData
         for event in oldEvents { await notificationService.removeEventNotification(id: event.id) }
         for task in backup.tasks.map(\.value) { await notificationService.sync(task: task) }
         for event in backup.events.map(\.value) { await notificationService.sync(event: event) }
-        await taskStore.load(); await calendarStore.load(); await completionStore.load(); await projectStore.load(); await dailyNoteStore.load(for: .now)
+        await taskStore.load(); await calendarStore.load(); await completionStore.load(); await projectStore.load(); await tagStore?.load(); await dailyNoteStore.load(for: .now)
         widgetRefreshService.reloadTodayWidgets(); try? refreshSummary()
     }
 
@@ -94,6 +102,7 @@ import SwiftData
         try unique(backup.dailyNotes.map { $0.value.id }, "DailyNote")
         try unique(backup.projects.map { $0.value.id }, "Project")
         try unique(backup.taskCompletions.map { $0.value.id }, "TaskCompletion")
+        try unique((backup.tags ?? []).map(\.id), "Tag")
         let taskIDs = Set(backup.tasks.map { $0.value.id }), projectIDs = Set(backup.projects.map { $0.value.id })
         for value in backup.taskCompletions.map(\.value) where !taskIDs.contains(value.taskID) { throw BackupError.missingTask(value.taskID) }
         for id in backup.tasks.compactMap({ $0.value.projectID }) + backup.events.compactMap({ $0.value.projectID }) where !projectIDs.contains(id) { throw BackupError.missingProject(id) }

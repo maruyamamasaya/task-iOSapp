@@ -5,18 +5,19 @@ import SwiftData
 @MainActor final class BackupServiceTests: XCTestCase {
     func testFullRoundTripPreservesModelsRelationshipsAndSettings() async throws {
         let fixture = makeFixture(), now = Date.now, projectID = UUID(), taskID = UUID()
+        let tag = AppTag(id: UUID(), name: "重要")
         let project = Project(id: projectID, name: "仕事", colorIdentifier: .orange, iconName: "briefcase", isArchived: false, createdAt: now, updatedAt: now)
         let task = TaskItem(id: taskID, title: "定例準備", note: "資料", startDate: now, dueDate: now,
                             isAllDay: false, isCompleted: false, completedAt: nil, priority: .high,
                             reminderDate: now.addingTimeInterval(1800), recurrenceRule: RecurrenceRule(frequency: .weekly),
-                            projectID: projectID, category: nil, tags: [], createdAt: now, updatedAt: now)
+                            projectID: projectID, category: nil, tags: [tag], createdAt: now, updatedAt: now)
         let event = CalendarEvent(id: UUID(), title: "定例", note: "会議", startDate: now, endDate: now.addingTimeInterval(3600),
                                   isAllDay: false, reminderDate: now.addingTimeInterval(-600), recurrenceRule: RecurrenceRule(frequency: .weekly),
                                   projectID: projectID, category: nil, externalEventID: nil, createdAt: now, updatedAt: now)
         let note = DailyNote(id: UUID(), date: now, text: "メモ本文", createdAt: now, updatedAt: now)
         let completion = TaskCompletion(id: UUID(), taskID: taskID, occurrenceDate: now, completedAt: now)
         let context = ModelContext(fixture.persistence.container)
-        context.insert(ProjectEntity(project)); context.insert(TaskEntity(task)); context.insert(CalendarEventEntity(event))
+        context.insert(ProjectEntity(project)); context.insert(TagEntity(tag)); context.insert(TaskEntity(task)); context.insert(CalendarEventEntity(event))
         context.insert(DailyNoteEntity(note)); context.insert(TaskCompletionEntity(completion)); try context.save()
         fixture.settings.appearance = .dark; fixture.settings.theme = .linen; fixture.settings.weekStartDay = .sunday; fixture.settings.defaultTaskPriority = .low
 
@@ -30,6 +31,7 @@ import SwiftData
         XCTAssertEqual(try restored.fetch(FetchDescriptor<CalendarEventEntity>()).first?.domain, event)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<DailyNoteEntity>()).first?.domain, note)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<ProjectEntity>()).first?.domain, project)
+        XCTAssertEqual(try restored.fetch(FetchDescriptor<TagEntity>()).first?.domain, tag)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<TaskCompletionEntity>()).first?.domain.taskID, taskID)
         XCTAssertEqual(fixture.settings.appearance, .dark); XCTAssertEqual(fixture.settings.weekStartDay, .sunday)
         XCTAssertEqual(fixture.settings.theme, .linen)

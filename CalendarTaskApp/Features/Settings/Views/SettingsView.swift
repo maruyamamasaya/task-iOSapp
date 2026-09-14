@@ -18,7 +18,7 @@ struct SettingsView: View {
             }
             Section("整理") {
                 NavigationLink("プロジェクト") { ProjectManagementView() }
-                LabeledContent("タグ", value: "今後対応").foregroundStyle(.secondary)
+                NavigationLink("タグ") { TagManagementView() }
             }
             Section("情報") {
                 NavigationLink("データ") { DataSettingsView(service: backupService) }

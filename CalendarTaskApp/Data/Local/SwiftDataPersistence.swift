@@ -14,6 +14,7 @@ import SwiftData
     var reminderDate: Date?
     var recurrenceData: Data?
     var projectID: UUID?
+    var tagsData: Data?
     var createdAt: Date
     var updatedAt: Date
 
@@ -23,6 +24,7 @@ import SwiftData
         completedAt = task.completedAt; priorityRawValue = task.priority.rawValue; reminderDate = task.reminderDate
         recurrenceData = try? JSONEncoder().encode(task.recurrenceRule)
         projectID = task.projectID
+        tagsData = try? JSONEncoder().encode(task.tags)
         createdAt = task.createdAt; updatedAt = task.updatedAt
     }
 
@@ -32,7 +34,7 @@ import SwiftData
                  priority: TaskPriority(rawValue: priorityRawValue) ?? .normal, reminderDate: reminderDate,
                  recurrenceRule: recurrenceData.flatMap { try? JSONDecoder().decode(RecurrenceRule.self, from: $0) },
                  projectID: projectID,
-                 category: nil, tags: [], createdAt: createdAt, updatedAt: updatedAt)
+                 category: nil, tags: tagsData.flatMap { try? JSONDecoder().decode([AppTag].self, from: $0) } ?? [], createdAt: createdAt, updatedAt: updatedAt)
     }
 
     func update(from task: TaskItem) {
@@ -41,7 +43,15 @@ import SwiftData
         priorityRawValue = task.priority.rawValue; reminderDate = task.reminderDate
         recurrenceData = try? JSONEncoder().encode(task.recurrenceRule); updatedAt = task.updatedAt
         projectID = task.projectID
+        tagsData = try? JSONEncoder().encode(task.tags)
     }
+}
+
+@Model final class TagEntity {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    init(_ tag: AppTag) { id = tag.id; name = tag.name }
+    var domain: AppTag { AppTag(id: id, name: name) }
 }
 
 @Model final class CalendarEventEntity {
@@ -128,7 +138,7 @@ final class SwiftDataPersistence {
     let container: ModelContainer
     init(inMemory: Bool = false, bundle: Bundle = .main, fileManager: FileManager = .default) {
         do {
-            let schema = Schema([TaskEntity.self, CalendarEventEntity.self, DailyNoteEntity.self, TaskCompletionEntity.self, ProjectEntity.self])
+            let schema = Schema([TaskEntity.self, CalendarEventEntity.self, DailyNoteEntity.self, TaskCompletionEntity.self, ProjectEntity.self, TagEntity.self])
             let configuration: ModelConfiguration
             if inMemory {
                 configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

@@ -101,3 +101,33 @@ import SwiftData
         try modelContext.delete(model: ProjectEntity.self, where: #Predicate { $0.id == id }); try modelContext.save()
     }
 }
+
+@MainActor final class SwiftDataTagRepository: TagRepository, @unchecked Sendable {
+    private let modelContext: ModelContext
+    init(container: ModelContainer) { modelContext = ModelContext(container) }
+    func fetchTags() async throws -> [AppTag] {
+        try modelContext.fetch(FetchDescriptor<TagEntity>(sortBy: [SortDescriptor(\.name)])).map(\.domain)
+    }
+    func saveTag(_ tag: AppTag) async throws {
+        let id = tag.id
+        var descriptor = FetchDescriptor<TagEntity>(predicate: #Predicate { $0.id == id }); descriptor.fetchLimit = 1
+        if let entity = try modelContext.fetch(descriptor).first { entity.name = tag.name }
+        else { modelContext.insert(TagEntity(tag)) }
+        let tasks = try modelContext.fetch(FetchDescriptor<TaskEntity>())
+        for task in tasks {
+            var tags = task.tagsData.flatMap { try? JSONDecoder().decode([AppTag].self, from: $0) } ?? []
+            if let index = tags.firstIndex(where: { $0.id == id }) { tags[index] = tag; task.tagsData = try JSONEncoder().encode(tags) }
+        }
+        try modelContext.save()
+    }
+    func deleteTag(id: UUID) async throws {
+        let tasks = try modelContext.fetch(FetchDescriptor<TaskEntity>())
+        for task in tasks {
+            var tags = task.tagsData.flatMap { try? JSONDecoder().decode([AppTag].self, from: $0) } ?? []
+            tags.removeAll { $0.id == id }
+            task.tagsData = try JSONEncoder().encode(tags)
+        }
+        try modelContext.delete(model: TagEntity.self, where: #Predicate { $0.id == id })
+        try modelContext.save()
+    }
+}

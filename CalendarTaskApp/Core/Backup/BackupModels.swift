@@ -25,11 +25,12 @@ struct AppBackup: Codable, Equatable {
     let dailyNotes: [BackupDailyNote]
     let projects: [BackupProject]
     let taskCompletions: [BackupTaskCompletion]
+    var tags: [AppTag]? = nil
     let settings: BackupSettings
 }
 
 struct BackupDataSummary: Equatable {
-    var tasks = 0, events = 0, notes = 0, projects = 0, completions = 0
+    var tasks = 0, events = 0, notes = 0, projects = 0, tags = 0, completions = 0
 }
 
 enum BackupError: LocalizedError, Equatable {
