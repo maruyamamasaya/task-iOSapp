@@ -35,11 +35,12 @@ final class UserNotificationService: NotificationService, @unchecked Sendable {
     func sync(task: TaskItem) async {
         await removeSeries(prefix: Self.taskIdentifier(task.id))
         guard !task.isCompleted, let reminder = task.reminderDate, await canSchedule() else { return }
+        let text = Self.taskNotificationText(title: task.title)
         if let rule = task.recurrenceRule, let anchor = task.dueDate ?? task.startDate,
            let pair = nextReminder(anchor: anchor, reminder: reminder, rule: rule) {
-            await schedule(identifier: Self.taskOccurrenceIdentifier(task.id, pair.occurrence), title: task.title, body: "タスクの時間です", date: pair.reminder)
+            await schedule(identifier: Self.taskOccurrenceIdentifier(task.id, pair.occurrence), title: text.title, body: text.body, date: pair.reminder)
         } else if reminder > now() {
-            await schedule(identifier: Self.taskIdentifier(task.id), title: task.title, body: "タスクの時間です", date: reminder)
+            await schedule(identifier: Self.taskIdentifier(task.id), title: text.title, body: text.body, date: reminder)
         }
     }
     func sync(event: CalendarEvent) async {
@@ -56,6 +57,9 @@ final class UserNotificationService: NotificationService, @unchecked Sendable {
     func removeTaskOccurrenceNotification(taskID: UUID, occurrenceDate: Date) async { remove(Self.taskOccurrenceIdentifier(taskID, occurrenceDate)) }
     static func taskIdentifier(_ id: UUID) -> String { "task-\(id.uuidString.lowercased())" }
     static func eventIdentifier(_ id: UUID) -> String { "event-\(id.uuidString.lowercased())" }
+    static func taskNotificationText(title: String) -> (title: String, body: String) {
+        (title: "タスクの時間です", body: title)
+    }
     static func taskOccurrenceIdentifier(_ id: UUID, _ date: Date) -> String { "\(taskIdentifier(id))-\(dayStamp(date))" }
     static func eventOccurrenceIdentifier(_ id: UUID, _ date: Date) -> String { "\(eventIdentifier(id))-\(dayStamp(date))" }
     private static func dayStamp(_ date: Date) -> Int { Int(Calendar.current.startOfDay(for: date).timeIntervalSince1970) }

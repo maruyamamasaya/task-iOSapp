@@ -5,7 +5,7 @@ extension AppTheme {
         switch self {
         case .classic, .linen: .serif
         case .sakura: .rounded
-        case .midnight, .modern: .default
+        case .midnight, .modern, .aurora: .default
         }
     }
 
@@ -16,6 +16,7 @@ extension AppTheme {
         case .linen: 10
         case .midnight: 10
         case .modern: 14
+        case .aurora: 16
         }
     }
 
@@ -24,6 +25,7 @@ extension AppTheme {
         case .classic, .midnight: 14
         case .linen: 18
         case .sakura, .modern: 20
+        case .aurora: 18
         }
     }
 
@@ -178,6 +180,18 @@ extension AppTheme {
                             shadow: 0x000000, shadowOpacity: 0.24, shadowRadius: 8, shadowY: 4,
                             surfaceRadius: 20, controlRadius: 12, headingTracking: -0.2,
                             subtitle: "チャコールの面、端正なラベンダー")
+        case (.aurora, .light):
+            ThemeAppearance(background: 0xF4F5FA, surface: 0xFFFFFF, accent: 0x5936C8, ink: 0x1D1F2A, muted: 0x5D6270,
+                            selectionInk: 0xFFFFFF, border: 0xCBC7E3, ornament: 0xC72E86, control: 0xEAE8F8,
+                            shadow: 0x5936C8, shadowOpacity: 0.16, shadowRadius: 18, shadowY: 7,
+                            surfaceRadius: 22, controlRadius: 16, borderWidth: 1, headingWeight: .bold, headingTracking: -0.35,
+                            subtitle: "光が流れるグラデーションとガラスのSurface")
+        case (.aurora, _):
+            ThemeAppearance(background: 0x07080D, surface: 0x151722, accent: 0x68E1F5, ink: 0xF5F6FC, muted: 0xB6BAC8,
+                            selectionInk: 0x071018, border: 0x41465A, ornament: 0xF44CA2, control: 0x202333,
+                            shadow: 0x6D4AFF, shadowOpacity: 0.28, shadowRadius: 20, shadowY: 8,
+                            surfaceRadius: 22, controlRadius: 16, borderWidth: 1, headingWeight: .bold, headingTracking: -0.4,
+                            subtitle: "深い夜色、シアンと紫紅の生きた光")
         }
     }
 
@@ -190,14 +204,23 @@ struct ThemeSurface: View {
     let theme: AppTheme
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         let palette = theme.appearance(for: scheme)
         let shape = RoundedRectangle(cornerRadius: palette.surfaceRadius, style: .continuous)
-        shape.fill(palette.surface)
+        shape.fill(palette.surface.opacity(theme == .aurora && !reduceTransparency ? 0.88 : 1))
             .overlay {
-                shape.strokeBorder(contrast == .increased ? palette.mutedInk : palette.border,
-                                   lineWidth: contrast == .increased ? 1.5 : palette.borderWidth)
+                if theme == .aurora && contrast != .increased {
+                    shape.strokeBorder(
+                        LinearGradient(colors: [palette.accent.opacity(0.9), Color.purple.opacity(0.75), palette.ornament.opacity(0.9)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: palette.borderWidth
+                    )
+                } else {
+                    shape.strokeBorder(contrast == .increased ? palette.mutedInk : palette.border,
+                                       lineWidth: contrast == .increased ? 1.5 : palette.borderWidth)
+                }
             }
             .overlay {
                 if theme == .linen && scheme == .dark {
@@ -231,14 +254,24 @@ struct ThemedProminentStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let palette = settings.theme.appearance(for: scheme)
+        let shape = RoundedRectangle(cornerRadius: palette.controlRadius, style: .continuous)
         configuration.label
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
             .foregroundStyle(isEnabled ? palette.selectionInk : palette.mutedInk)
-            .background(isEnabled ? palette.accent : palette.control,
-                        in: RoundedRectangle(cornerRadius: palette.controlRadius, style: .continuous))
+            .background {
+                if settings.theme == .aurora && isEnabled {
+                    shape.fill(LinearGradient(colors: [palette.accent, Color(red: 0.66, green: 0.47, blue: 1), palette.ornament],
+                                              startPoint: .leading, endPoint: .trailing))
+                } else {
+                    shape.fill(isEnabled ? palette.accent : palette.control)
+                }
+            }
             .opacity(configuration.isPressed ? 0.82 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .shadow(color: settings.theme == .aurora && isEnabled ? palette.shadow : .clear,
+                    radius: configuration.isPressed ? 5 : 10, y: 3)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }

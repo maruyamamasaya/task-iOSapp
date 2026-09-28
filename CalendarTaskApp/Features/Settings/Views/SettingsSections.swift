@@ -97,7 +97,7 @@ struct AppearanceSettingsView: View {
                     Picker("外観", selection: $settings.appearance) { ForEach(AppAppearance.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
                 }
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("手帳テーマ").font(.headline)
+                    Text("テーマ").font(.headline)
                     ForEach(AppTheme.allCases) { theme in
                         Button { settings.theme = theme } label: { ThemePreviewCard(theme: theme, isSelected: settings.theme == theme) }
                             .buttonStyle(ThemedPressStyle())

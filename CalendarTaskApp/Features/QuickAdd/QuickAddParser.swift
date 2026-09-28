@@ -12,15 +12,15 @@ struct QuickAddResult: Hashable {
     let date: Date
     let hasExplicitTime: Bool
 
-    func task(now: Date = .now) -> TaskItem {
+    func task(now: Date = .now, reminderDate: Date? = nil) -> TaskItem {
         TaskItem(id: UUID(), title: title, note: "", startDate: date, dueDate: date,
                  isAllDay: !hasExplicitTime, isCompleted: false, completedAt: nil,
-                 priority: .normal, reminderDate: nil, recurrenceRule: nil, projectID: nil, category: nil, tags: [], createdAt: now, updatedAt: now)
+                 priority: .normal, reminderDate: reminderDate, recurrenceRule: nil, projectID: nil, category: nil, tags: [], createdAt: now, updatedAt: now)
     }
-    func event(calendar: Calendar = .current, now: Date = .now) -> CalendarEvent {
+    func event(calendar: Calendar = .current, now: Date = .now, reminderDate: Date? = nil) -> CalendarEvent {
         let end = calendar.date(byAdding: hasExplicitTime ? .hour : .day, value: 1, to: date) ?? date
         return CalendarEvent(id: UUID(), title: title, note: "", startDate: date, endDate: end,
-                             isAllDay: !hasExplicitTime, reminderDate: nil, recurrenceRule: nil, projectID: nil, category: nil, externalEventID: nil,
+                             isAllDay: !hasExplicitTime, reminderDate: reminderDate, recurrenceRule: nil, projectID: nil, category: nil, externalEventID: nil,
                              createdAt: now, updatedAt: now)
     }
     func note(existing: DailyNote?, now: Date = .now) -> DailyNote {

@@ -21,6 +21,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     case linen = "ナチュラルリネン"
     case midnight = "ミッドナイト"
     case modern = "モダンノート"
+    case aurora = "Living Aurora"
     var id: Self { self }
 }
 struct TaskCreationDefaults { let priority: TaskPriority; let isAllDay: Bool; let reminderDate: Date? }
@@ -75,7 +76,7 @@ struct EventCreationDefaults { let startDate: Date; let endDate: Date; let remin
         defaultEventStartHour = defaults.object(forKey: Key.eventHour) == nil ? 10 : defaults.integer(forKey: Key.eventHour)
         defaultEventDurationMinutes = defaults.object(forKey: Key.eventDuration) == nil ? 60 : defaults.integer(forKey: Key.eventDuration)
         quickAddDefaultType = Self.value(defaults, Key.quickType, .task); quickAddSaveImmediately = Self.bool(defaults, Key.quickSave, false)
-        quickAddAlwaysPreview = Self.bool(defaults, Key.quickPreview, true); defaultReminder = Self.value(defaults, Key.reminder, .none)
+        quickAddAlwaysPreview = Self.bool(defaults, Key.quickPreview, true); defaultReminder = Self.value(defaults, Key.reminder, .thirtyMinutes)
         appearance = Self.value(defaults, Key.appearance, .system); theme = Self.value(defaults, Key.theme, .classic)
         lastBackupDate = defaults.object(forKey: Key.lastBackupDate) as? Date; isLoading = false
         syncWidgetAppearance()

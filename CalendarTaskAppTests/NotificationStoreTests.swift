@@ -14,6 +14,12 @@ private actor MockNotificationService: NotificationService {
 }
 
 final class NotificationStoreTests: XCTestCase {
+    func testTaskNotificationDisplaysTaskTitleInBody() {
+        let text = UserNotificationService.taskNotificationText(title: "請求書を送る")
+        XCTAssertEqual(text.title, "タスクの時間です")
+        XCTAssertEqual(text.body, "請求書を送る")
+    }
+
     @MainActor func testTaskAddCompletionAndDeleteSynchronizeNotification() async {
         let notifications = MockNotificationService()
         let store = TaskStore(repository: InMemoryTaskRepository(tasks: []), notificationService: notifications)

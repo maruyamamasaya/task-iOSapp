@@ -39,6 +39,7 @@ struct AddItemMenu: View {
 }
 
 struct EditorHostView: View {
+    @EnvironmentObject private var settings: SettingsStore
     let route: EditorRoute
     let noteForDate: (Date) -> DailyNote?
     let saveTask: (TaskItem) async -> Bool
@@ -58,8 +59,12 @@ struct EditorHostView: View {
         case let .note(note, date): NoteFormView(note: note, defaultDate: date, onSave: { await saveNote($0); return true }, onDelete: deleteNote)
         case let .quickAddDraft(result):
             switch result.type {
-            case .task: TaskFormView(item: result.task(), defaultDate: result.date, isCreating: true, onSave: saveTask, onDelete: deleteTask)
-            case .event: EventFormView(item: result.event(), defaultDate: result.date, isCreating: true, onSave: saveEvent, onDelete: deleteEvent)
+            case .task:
+                TaskFormView(item: result.task(reminderDate: settings.defaultReminder.date(relativeTo: result.date)), defaultDate: result.date,
+                             isCreating: true, onSave: saveTask, onDelete: deleteTask)
+            case .event:
+                EventFormView(item: result.event(reminderDate: settings.defaultReminder.date(relativeTo: result.date)), defaultDate: result.date,
+                              isCreating: true, onSave: saveEvent, onDelete: deleteEvent)
             case .note: NoteFormView(note: result.note(existing: noteForDate(result.date)), defaultDate: result.date, isCreating: noteForDate(result.date) == nil, onSave: { await saveNote($0); return true }, onDelete: deleteNote)
             }
         }

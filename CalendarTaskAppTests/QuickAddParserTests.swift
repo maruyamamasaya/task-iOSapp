@@ -55,6 +55,16 @@ final class QuickAddParserTests: XCTestCase {
         XCTAssertEqual(result.title, "なんとなく買い物する")
         XCTAssertFalse(result.hasExplicitTime)
     }
+
+    func testQuickAddFactoriesApplyProvidedReminder() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let reminder = date.addingTimeInterval(-1800)
+        let taskResult = QuickAddResult(type: .task, title: "タスク", date: date, hasExplicitTime: true)
+        let eventResult = QuickAddResult(type: .event, title: "予定", date: date, hasExplicitTime: true)
+
+        XCTAssertEqual(taskResult.task(reminderDate: reminder).reminderDate, reminder)
+        XCTAssertEqual(eventResult.event(reminderDate: reminder).reminderDate, reminder)
+    }
 }
 
 private actor QuickNoteRepository: DailyNoteRepository {

@@ -161,8 +161,10 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
     func saveQuickAdd(_ result: QuickAddResult) async -> Bool {
         let saved: Bool
         switch result.type {
-        case .task: saved = await saveTask(result.task(now: dateProvider.now))
-        case .event: saved = await saveEvent(result.event(now: dateProvider.now))
+        case .task:
+            saved = await saveTask(result.task(now: dateProvider.now, reminderDate: settingsStore.defaultReminder.date(relativeTo: result.date)))
+        case .event:
+            saved = await saveEvent(result.event(now: dateProvider.now, reminderDate: settingsStore.defaultReminder.date(relativeTo: result.date)))
         case .note:
             await dailyNoteStore.load(for: result.date)
             guard dailyNoteStore.errorMessage == nil else { return false }

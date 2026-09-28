@@ -52,10 +52,10 @@ struct AppRootView: View {
 
 extension AppTheme {
     var subtitle: String {
-        switch self { case .classic: "落ち着いた紙とブルーの罫線"; case .sakura: "淡いピンクと花びらのアクセント"; case .linen: "温かい生成りと繊維の風合い"; case .midnight: "深いネイビーの静かなグリッド"; case .modern: "余白を活かした都会的な幾何学" }
+        switch self { case .classic: "落ち着いた紙とブルーの罫線"; case .sakura: "淡いピンクと花びらのアクセント"; case .linen: "温かい生成りと繊維の風合い"; case .midnight: "深いネイビーの静かなグリッド"; case .modern: "余白を活かした都会的な幾何学"; case .aurora: "流れる光とガラスの奥行き" }
     }
     var symbol: String {
-        switch self { case .classic: "book.closed"; case .sakura: "camera.macro"; case .linen: "leaf"; case .midnight: "moon.stars"; case .modern: "square.on.circle" }
+        switch self { case .classic: "book.closed"; case .sakura: "camera.macro"; case .linen: "leaf"; case .midnight: "moon.stars"; case .modern: "square.on.circle"; case .aurora: "sparkles" }
     }
     var accent: Color {
         Color(uiColor: UIColor { traits in
@@ -73,12 +73,16 @@ struct AppThemeBackground: View {
     let theme: AppTheme
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let palette = theme.appearance(for: colorScheme)
         ZStack {
             palette.background
             if !reduceTransparency {
+                if theme == .aurora {
+                    AuroraMotionLayer(palette: palette, isPaused: reduceMotion)
+                }
                 if theme == .sakura {
                     RadialGradient(colors: [palette.ornament.opacity(colorScheme == .dark ? 0.16 : 0.12), .clear],
                                    center: .topTrailing, startRadius: 0, endRadius: colorScheme == .dark ? 280 : 420)
@@ -142,6 +146,20 @@ struct AppThemeBackground: View {
                         let rect = CGRect(x: size.width * 0.65, y: -50, width: size.width * 0.65, height: size.height * 0.5)
                         context.stroke(Path(roundedRect: rect, cornerRadius: 32), with: .color(ink.opacity(0.14)), lineWidth: 1)
                         line(&context, from: CGPoint(x: 0, y: size.height * 0.84), to: CGPoint(x: size.width * 0.32, y: size.height * 0.84), color: ink.opacity(0.12))
+                    case (.aurora, _):
+                        for x in stride(from: 0.0, through: size.width, by: 34) {
+                            line(&context, from: CGPoint(x: x, y: 0), to: CGPoint(x: x, y: size.height), color: ink.opacity(0.08), width: 0.5)
+                        }
+                        for y in stride(from: 0.0, through: size.height, by: 34) {
+                            line(&context, from: CGPoint(x: 0, y: y), to: CGPoint(x: size.width, y: y), color: ink.opacity(0.08), width: 0.5)
+                        }
+                        for index in 0..<28 {
+                            let x = CGFloat((index * 89) % 431) / 431 * size.width
+                            let y = CGFloat((index * 149) % 677) / 677 * size.height
+                            let radius = index.isMultiple(of: 4) ? 2.2 : 1.2
+                            context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: radius, height: radius)),
+                                         with: .color(ink.opacity(index.isMultiple(of: 3) ? 0.42 : 0.22)))
+                        }
                     }
                 }
             }
@@ -168,6 +186,42 @@ struct AppThemeBackground: View {
             petal.addQuadCurve(to: CGPoint(x: x, y: y), control: CGPoint(x: x - 3, y: y + 10))
             context.fill(petal, with: .color(color))
         }
+    }
+}
+
+private struct AuroraMotionLayer: View {
+    let palette: ThemeAppearance
+    let isPaused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        GeometryReader { proxy in
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: isPaused)) { timeline in
+                let time = timeline.date.timeIntervalSinceReferenceDate
+                let width = proxy.size.width
+                let height = proxy.size.height
+                ZStack {
+                    glow(color: Color(red: 0.43, green: 0.29, blue: 1), opacity: colorScheme == .dark ? 0.34 : 0.16)
+                        .frame(width: width * 1.05, height: width * 1.05)
+                        .offset(x: CGFloat(sin(time * 0.10)) * width * 0.25 - width * 0.18,
+                                y: CGFloat(cos(time * 0.08)) * height * 0.12 - height * 0.28)
+                    glow(color: palette.ornament, opacity: colorScheme == .dark ? 0.24 : 0.12)
+                        .frame(width: width * 0.9, height: width * 0.9)
+                        .offset(x: CGFloat(cos(time * 0.075)) * width * 0.22 + width * 0.2,
+                                y: CGFloat(sin(time * 0.09)) * height * 0.18 + height * 0.2)
+                    glow(color: palette.accent, opacity: colorScheme == .dark ? 0.18 : 0.10)
+                        .frame(width: width * 0.72, height: width * 0.72)
+                        .offset(x: CGFloat(sin(time * 0.065)) * width * 0.3,
+                                y: CGFloat(cos(time * 0.055)) * height * 0.26)
+                }
+                .blur(radius: 42)
+            }
+        }
+    }
+
+    private func glow(color: Color, opacity: Double) -> some View {
+        Circle().fill(RadialGradient(colors: [color.opacity(opacity), color.opacity(opacity * 0.32), .clear],
+                                     center: .center, startRadius: 0, endRadius: 180))
     }
 }
 

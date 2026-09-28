@@ -13,6 +13,7 @@ import SwiftUI
         XCTAssertEqual(store.weekStartDay, .monday)
         XCTAssertEqual(store.initialCalendarMode, .month)
         XCTAssertEqual(store.defaultTaskPriority, .normal)
+        XCTAssertEqual(store.defaultReminder, .thirtyMinutes)
         XCTAssertEqual(store.appearance, .system)
         XCTAssertEqual(store.theme, .classic)
         XCTAssertEqual(CalendarViewModel.displayMode(for: .month), .month)
