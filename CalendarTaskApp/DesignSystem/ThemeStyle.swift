@@ -175,11 +175,11 @@ extension AppTheme {
                             surfaceRadius: 24, controlRadius: 14, headingWeight: .bold, headingTracking: -0.3,
                             subtitle: "白いSurface、明快な紫と広い余白")
         case (.modern, _):
-            ThemeAppearance(background: 0x19191D, surface: 0x29292F, accent: 0xC1B4F6, ink: 0xF0F0F5, muted: 0xBCBAC8,
-                            selectionInk: 0x29223F, border: 0x515158, ornament: 0x9A96B0, control: 0x3B374A,
+            ThemeAppearance(background: 0x05070C, surface: 0x0D1220, accent: 0xB5A1FF, ink: 0xEEF2FF, muted: 0xA5AEC4,
+                            selectionInk: 0x17102F, border: 0x424967, ornament: 0x55DDE0, control: 0x202B42,
                             shadow: 0x000000, shadowOpacity: 0.24, shadowRadius: 8, shadowY: 4,
                             surfaceRadius: 20, controlRadius: 12, headingTracking: -0.2,
-                            subtitle: "チャコールの面、端正なラベンダー")
+                            subtitle: "Living Aurora、紫とシアンの柔らかな光")
         case (.aurora, .light):
             ThemeAppearance(background: 0xF4F5FA, surface: 0xFFFFFF, accent: 0x5936C8, ink: 0x1D1F2A, muted: 0x5D6270,
                             selectionInk: 0xFFFFFF, border: 0xCBC7E3, ornament: 0xC72E86, control: 0xEAE8F8,

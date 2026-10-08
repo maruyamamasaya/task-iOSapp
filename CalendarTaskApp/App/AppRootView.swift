@@ -87,6 +87,16 @@ struct AppThemeBackground: View {
                     RadialGradient(colors: [palette.ornament.opacity(colorScheme == .dark ? 0.16 : 0.12), .clear],
                                    center: .topTrailing, startRadius: 0, endRadius: colorScheme == .dark ? 280 : 420)
                 }
+                if colorScheme == .dark && (theme == .modern || theme == .midnight) {
+                    RadialGradient(colors: [(theme == .modern ? Color(red: 0.545, green: 0.424, blue: 1) : Color(red: 0.086, green: 0.298, blue: 0.647)).opacity(0.30), .clear],
+                                   center: .topLeading, startRadius: 0, endRadius: 480)
+                    RadialGradient(colors: [(theme == .modern ? Color(red: 0.333, green: 0.867, blue: 0.878) : Color(red: 0.294, green: 0.329, blue: 0.733)).opacity(0.18), .clear],
+                                   center: .bottomTrailing, startRadius: 0, endRadius: 360)
+                    if theme == .modern {
+                        RadialGradient(colors: [Color(red: 0.835, green: 0.388, blue: 0.784).opacity(0.12), .clear],
+                                       center: .topTrailing, startRadius: 0, endRadius: 280)
+                    }
+                }
                 Canvas { context, size in
                     let ink = palette.ornament
                     switch (theme, colorScheme) {
@@ -133,16 +143,29 @@ struct AppThemeBackground: View {
                         for radius in [150.0, 230.0, 310.0] {
                             context.stroke(Path(ellipseIn: CGRect(x: size.width - radius, y: -radius, width: radius * 2, height: radius * 2)), with: .color(ink.opacity(0.085)), lineWidth: 0.5)
                         }
-                        for index in 0..<40 {
-                            let x = CGFloat((index * 83) % 379) / 379 * size.width
-                            let y = CGFloat((index * 137) % 521) / 521 * size.height
-                            context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.2, height: 1.2)), with: .color(ink.opacity(0.30)))
+                        // Stable positions prevent stars jumping when screen state changes.
+                        let count = max(60, min(240, Int(size.width * size.height / 2200)))
+                        for index in 0..<count {
+                            let x = CGFloat((index * 83 + 29) % 997) / 997 * size.width
+                            let y = CGFloat((index * 137 + 71) % 991) / 991 * size.height
+                            let bright = index.isMultiple(of: 13)
+                            let diameter: CGFloat = bright ? 2.4 : (index.isMultiple(of: 3) ? 1.4 : 0.8)
+                            let color = index.isMultiple(of: 5) ? ink : Color.white
+                            if bright {
+                                let halo = CGRect(x: x - 7, y: y - 7, width: 14, height: 14)
+                                context.fill(Path(ellipseIn: halo), with: .radialGradient(
+                                    Gradient(colors: [color.opacity(0.32), .clear]),
+                                    center: CGPoint(x: x, y: y), startRadius: 0, endRadius: 7))
+                            }
+                            context.fill(Path(ellipseIn: CGRect(x: x - diameter / 2, y: y - diameter / 2,
+                                                               width: diameter, height: diameter)),
+                                         with: .color(color.opacity(bright ? 0.85 : 0.28 + Double(index % 4) * 0.12)))
                         }
                     case (.modern, .light):
                         context.fill(Path(ellipseIn: CGRect(x: size.width - 145, y: -95, width: 240, height: 240)), with: .color(ink.opacity(0.10)))
                         context.fill(Path(roundedRect: CGRect(x: -70, y: size.height * 0.75, width: 180, height: 180), cornerRadius: 40), with: .color(ink.opacity(0.055)))
                     case (.modern, _):
-                        // Architectural edge lighting on charcoal; no decorative grain.
+                        // Cyan edges pick up the ambient aurora light.
                         let rect = CGRect(x: size.width * 0.65, y: -50, width: size.width * 0.65, height: size.height * 0.5)
                         context.stroke(Path(roundedRect: rect, cornerRadius: 32), with: .color(ink.opacity(0.14)), lineWidth: 1)
                         line(&context, from: CGPoint(x: 0, y: size.height * 0.84), to: CGPoint(x: size.width * 0.32, y: size.height * 0.84), color: ink.opacity(0.12))

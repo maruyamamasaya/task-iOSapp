@@ -139,12 +139,12 @@ private struct TagEditorView: View {
             .navigationTitle(tag == nil ? "タグを作成" : "タグを編集").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { save() }.disabled(name.trimmed.isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { save() }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
             }
             .confirmationDialog("タグを削除しますか？", isPresented: $confirmsDeletion, titleVisibility: .visible) {
                 Button("削除", role: .destructive) { if let tag { Task { await store.delete(id: tag.id); dismiss() } } }
             } message: { Text("このタグは既存のタスクからも外れます。") }
         }
     }
-    private func save() { Task { await store.save(AppTag(id: tag?.id ?? UUID(), name: name.trimmed)); dismiss() } }
+    private func save() { Task { await store.save(AppTag(id: tag?.id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines))); dismiss() } }
 }
