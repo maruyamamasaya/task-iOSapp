@@ -1,4 +1,5 @@
 import SwiftUI
+import DotLocalBridge
 
 struct DailyHeader: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -252,6 +253,10 @@ struct DailyBriefSection: View {
                 Text(brief.text).font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if let id = brief.briefID, brief.audio != nil {
+                    Button { if let pair = try? KeychainRelayPairing().load() { BriefPlaybackRouter.shared.open(briefID: id, bridgeID: pair.bridgeID) } }
+                    label: { Label("音声を聴く", systemImage: "play.circle") }
+                }
                 if isOutdated {
                     Text("生成後に予定やタスクが変わっています。Dotに更新を頼めます。")
                         .font(.caption).foregroundStyle(.secondary)

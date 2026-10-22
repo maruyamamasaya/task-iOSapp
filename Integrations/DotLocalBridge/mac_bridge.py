@@ -365,6 +365,13 @@ def _make_server(bridge, test_bearer, host, *, port=0):
             self.send_header('Connection', 'close')
             self.end_headers(); self.wfile.write(data)
             self.close_connection = True
+        def audio_reply(self, data):
+            self.send_response(200)
+            self.send_header('Content-Type', 'audio/wav')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Content-Length', str(len(data)))
+            self.send_header('Connection', 'close')
+            self.end_headers(); self.wfile.write(data); self.close_connection = True
         def dispatch(self):
             try:
                 authenticated = hmac.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + test_bearer)
@@ -372,6 +379,9 @@ def _make_server(bridge, test_bearer, host, *, port=0):
                 if not authenticated: raise BridgeError(401, 'authentication_required')
                 if self.headers.get('Origin') or self.headers.get('Sec-Fetch-Site') not in (None, 'none'): raise BridgeError(403, 'browser_request_rejected')
                 if '?' in self.path or self.headers.get('Transfer-Encoding'): raise BridgeError(400, 'invalid_request')
+                if self.command == 'GET' and re.fullmatch('/v1/daily-audio/[a-f0-9]{64}', self.path):
+                    from daily_brief import audio_bytes
+                    return self.audio_reply(audio_bytes(bridge, self.path.rsplit('/', 1)[-1]))
                 if self.command == 'GET' and self.path == '/v1/tasks': return self.reply(200, bridge.feed())
                 if self.command == 'GET' and re.fullmatch('/v1/operations/[a-fA-F0-9-]{36}', self.path):
                     return self.reply(200, bridge.receipt(self.path.rsplit('/', 1)[-1]))
@@ -412,17 +422,32 @@ def main():
     p = argparse.ArgumentParser(description='Explicit local dot bridge operations. Does not start a listener.')
     p.add_argument('--database', required=True); p.add_argument('--bridge-id', required=True)
     sub = p.add_subparsers(dest='action', required=True)
+    audio = sub.add_parser('attach-brief-audio')
+    audio.add_argument('--date', required=True); audio.add_argument('--time-zone', required=True)
+    audio.add_argument('--brief-id', required=True); audio.add_argument('--audio-file', required=True)
     sub.add_parser('pending')
     sub.add_parser('traffic')
     context = sub.add_parser('daily-context'); context.add_argument('--date', required=True); context.add_argument('--time-zone', required=True)
     brief = sub.add_parser('publish-daily-brief'); brief.add_argument('--input', required=True)
+    spoken = sub.add_parser('publish-spoken-brief'); spoken.add_argument('--input', required=True)
     review = sub.add_parser('review-local'); review.add_argument('--destination', required=True)
     export = sub.add_parser('export-dot-file'); export.add_argument('--destination', required=True)
     apply = sub.add_parser('apply'); apply.add_argument('--operation-id', required=True); apply.add_argument('--destination', required=True)
     args = p.parse_args(); bridge = Bridge(args.database, args.bridge_id)
+    if args.action == 'attach-brief-audio':
+        from daily_brief import attach_audio
+        result = attach_audio(bridge, args.date, args.time_zone, args.brief_id, args.audio_file)
+        print(canonical({'saved': result, 'readback': read_daily_brief(bridge, result)}))
     if args.action == 'daily-context':
         from daily_brief import read_context
         print(canonical(read_context(bridge, args.date, args.time_zone)))
+    if args.action == 'publish-spoken-brief':
+        from daily_brief import publish
+        from generate_brief_audio import generate
+        result = publish(bridge, json.loads(Path(args.input).read_text()))
+        try: result = generate(bridge, result['date'], result['timeZone'])
+        except Exception: raise SystemExit('Audio incomplete; text saved. Retry the same input after checking NarrationStudio.')
+        print(canonical({'saved': result, 'readback': read_daily_brief(bridge, result)}))
     if args.action == 'publish-daily-brief':
         from daily_brief import publish
         result = publish(bridge, json.loads(Path(args.input).read_text()))

@@ -358,3 +358,50 @@ import DotLocalBridge
         XCTAssertEqual(store.brief?.date, "2026-10-23")
     }
 }
+
+@MainActor final class DailyBriefAudioTests: XCTestCase {
+    func pair(_ id: String = "synthetic-mac") throws -> RelayPairing {
+        let data = try JSONSerialization.data(withJSONObject: ["version":1,"endpoint":"https://192.168.1.2:8778",
+            "bridgeID":id,"certificateSHA256":String(repeating:"0",count:64),"bearer":String(repeating:"s",count:32),"deviceLabel":"synthetic"])
+        return try JSONDecoder().decode(RelayPairing.self, from:data)
+    }
+    func testAudioVerifiedBeforeReadyAndRetryReusesFile() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path:UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:folder) }
+        let pairing = try pair(), bytes = Data(repeating:0,count:100)
+        let hash = DotDailyBriefRepository.digest(bytes), id = String(repeating:"a",count:64)
+        let context = DailyBriefContext(date:"2026-10-22",timeZone:"Asia/Tokyo",tasks:[],events:[])
+        var value = DailyBrief(date:context.date,timeZone:context.timeZone,contextID:context.id,kind:"outlook",text:"合成見通し",generatedAt:.distantPast)
+        value.briefID = id; value.audio = .init(sha256:hash,byteCount:100,contentType:"audio/wav",duration:1)
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let response = try JSONSerialization.data(withJSONObject:["brief":JSONSerialization.jsonObject(with:encoder.encode(value))])
+        var fetches = 0, ready = 0
+        let repository = DotDailyBriefRepository(directory:folder,pairing:{pairing},exchange:{_,_ in response},audio:{_,_ in fetches += 1; return bytes},ready:{_,_ in
+            XCTAssertTrue(FileManager.default.fileExists(atPath:folder.appending(path:"synthetic-mac/audio/"+id+".json").path)); ready += 1
+        })
+        _ = try await repository.exchange(context); _ = try await repository.exchange(context)
+        XCTAssertEqual(fetches,1); XCTAssertEqual(ready,2)
+        XCTAssertEqual(try repository.cached(for:context),value)
+        // A corrupt local asset must be reacquired, not reported as already downloaded.
+        try Data([1]).write(to:folder.appending(path:"synthetic-mac/audio/"+hash+".wav"))
+        _ = try await repository.exchange(context); XCTAssertEqual(fetches,2)
+    }
+    func testCorruptTransferNeverPublishesReady() async throws {
+        let folder=FileManager.default.temporaryDirectory.appending(path:UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:folder) }
+        let pairing=try pair(), context=DailyBriefContext(date:"2026-10-22",timeZone:"Asia/Tokyo",tasks:[],events:[])
+        let response = try JSONSerialization.data(withJSONObject:["brief":["date":context.date,"timeZone":context.timeZone,"contextID":context.id,"kind":"outlook","text":"合成","generatedAt":"2026-10-22T00:00:00Z","briefID":String(repeating:"a",count:64),"audio":["sha256":String(repeating:"b",count:64),"byteCount":100,"contentType":"audio/wav","duration":1]]])
+        var ready=0
+        let repository=DotDailyBriefRepository(directory:folder,pairing:{pairing},exchange:{_,_ in response},audio:{_,_ in Data(repeating:0,count:100)},ready:{_,_ in ready += 1})
+        do { _ = try await repository.exchange(context); XCTFail("corrupt audio accepted") } catch {}
+        XCTAssertEqual(ready,0); XCTAssertNil(try repository.cached(for:context))
+    }
+    func testNotificationReservationIsDurableAndUnique() throws {
+        let folder=FileManager.default.temporaryDirectory.appending(path:UUID().uuidString)
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        defer { try? FileManager.default.removeItem(at:folder) }
+        let marker=folder.appending(path:"synthetic.notified")
+        try DotDailyBriefRepository.reserveNotification(marker)
+        XCTAssertThrowsError(try DotDailyBriefRepository.reserveNotification(marker))
+    }
+}

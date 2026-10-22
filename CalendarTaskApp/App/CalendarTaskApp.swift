@@ -10,6 +10,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         return true
     }
 
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              let id = response.notification.request.content.userInfo["dailyBriefID"] as? String,
+              let bridge = response.notification.request.content.userInfo["bridgeID"] as? String else { return }
+        await MainActor.run { BriefPlaybackRouter.shared.open(briefID: id, bridgeID: bridge) }
+    }
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification

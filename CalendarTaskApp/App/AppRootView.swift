@@ -6,6 +6,7 @@ struct AppRootView: View {
     let dependencies: AppDependencies
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var settings: SettingsStore
+    @ObservedObject private var playbackRouter = BriefPlaybackRouter.shared
     @State private var selectedRoute: AppRoute
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -69,6 +70,7 @@ struct AppRootView: View {
             guard phase == .active else { return }
             Task { await dependencies.rescheduleNotificationsIfAuthorized() }
         }
+        .sheet(item: $playbackRouter.request) { BriefPlaybackView(request: $0) }
         .onOpenURL { url in
             guard url.scheme?.lowercased() == "calendartaskapp" else { return }
             switch url.host?.lowercased() { case "today": selectedRoute = .today; case "calendar": selectedRoute = .calendar; case "tasks": selectedRoute = .tasks; default: break }

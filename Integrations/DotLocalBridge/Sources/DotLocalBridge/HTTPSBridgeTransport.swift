@@ -79,6 +79,25 @@ public final class HTTPSBridgeTransport: BridgeTransport, @unchecked Sendable {
         let response = try await request("v1/daily-brief", dailyInput: inputJSON, type: DailyBriefResponse.self)
         return try JSONEncoder().encode(response)
     }
+    public func fetchDailyAudio(sha256: String) async throws -> Data {
+        guard sha256.count == 64, sha256.allSatisfy({ $0.isHexDigit }) else { throw BridgeNetworkError.invalidConfiguration }
+        let url = base.appending(path: "v1/daily-audio/" + sha256)
+        var request = URLRequest(url: url)
+        request.setValue("Bearer " + bearer, forHTTPHeaderField: "Authorization")
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let response = response as? HTTPURLResponse, response.url == url,
+              response.statusCode == 200, response.mimeType == "audio/wav",
+              response.expectedContentLength <= 12 * 1024 * 1024 else { throw BridgeNetworkError.unexpectedResponse }
+        var data = Data()
+        for try await byte in bytes {
+            guard data.count < 12 * 1024 * 1024 else { throw BridgeNetworkError.unexpectedResponse }
+            data.append(byte)
+        }
+        guard SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == sha256 else {
+            throw BridgeNetworkError.unexpectedResponse
+        }
+        return data
+    }
     private struct DailyBriefResponse: Codable {
         struct Brief: Codable {
             let date: String
@@ -87,6 +106,9 @@ public final class HTTPSBridgeTransport: BridgeTransport, @unchecked Sendable {
             let kind: String
             let text: String
             let generatedAt: String
+            let briefID: String?
+            let audio: Audio?
+            struct Audio: Codable { let sha256: String; let byteCount: Int; let contentType: String; let duration: Double }
         }
         let brief: Brief?
     }

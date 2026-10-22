@@ -44,6 +44,14 @@ struct DailyBrief: Codable, Equatable, Sendable {
     let kind: String
     let text: String
     let generatedAt: Date
+    var briefID: String? = nil
+    var audio: Audio? = nil
+    struct Audio: Codable, Equatable, Sendable {
+        let sha256: String
+        let byteCount: Int
+        let contentType: String
+        let duration: Double
+    }
 }
 
 @MainActor protocol DailyBriefRepository {

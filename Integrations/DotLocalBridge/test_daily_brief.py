@@ -91,3 +91,86 @@ class DailyBriefTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+
+class BriefAudioTests(unittest.TestCase):
+    setUp = DailyBriefTests.setUp
+    tearDown = DailyBriefTests.tearDown
+    send = DailyBriefTests.send
+    brief = DailyBriefTests.brief
+    def audio(self):
+        import wave
+        file = Path(self.temp.name)/'synthetic.wav'
+        with wave.open(str(file),'wb') as wav:
+            wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(24000); wav.writeframes(b'\0\0'*240)
+        return file
+    def testAttachRetryIntegrityAndTaskIsolation(self):
+        from daily_brief import attach_audio, audio_bytes
+        self.send(); original = self.bridge.feed()
+        saved=publish(self.bridge,self.brief())
+        first=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio())
+        second=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio())
+        self.assertEqual(first,second)
+        self.assertEqual(publish(self.bridge,self.brief()),first)
+        self.assertEqual(audio_bytes(self.bridge,first['audio']['sha256']),self.audio().read_bytes())
+        self.assertEqual(original,self.bridge.feed())
+        (Path(self.temp.name)/'daily-audio'/(first['audio']['sha256']+'.wav')).write_bytes(b'bad')
+        with self.assertRaises(BridgeError): audio_bytes(self.bridge,first['audio']['sha256'])
+    def testRejectWrongBriefInvalidAudioAndPath(self):
+        from daily_brief import attach_audio, audio_bytes
+        self.send(); saved=publish(self.bridge,self.brief())
+        with self.assertRaises(BridgeError): attach_audio(self.bridge,saved['date'],saved['timeZone'],'0'*64,self.audio())
+        with self.assertRaises(BridgeError): audio_bytes(self.bridge,'../../private')
+        bad=Path(self.temp.name)/'bad.wav'; bad.write_bytes(b'bad')
+        with self.assertRaises(BridgeError): attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],bad)
+
+    def testAudioEndpointRequiresAuth(self):
+        from daily_brief import attach_audio
+        self.send(); saved=publish(self.bridge,self.brief())
+        ready=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio())
+        server=make_loopback_server(self.bridge,'synthetic-audio-token')
+        thread=threading.Thread(target=server.serve_forever); thread.start()
+        try:
+            url='http://127.0.0.1:'+str(server.server_address[1])+'/v1/daily-audio/'+ready['audio']['sha256']
+            with self.assertRaises(urllib.error.HTTPError) as caught: urllib.request.urlopen(url)
+            self.assertEqual(caught.exception.code,401); caught.exception.close()
+            request=urllib.request.Request(url,headers={'Authorization':'Bearer synthetic-audio-token'})
+            with urllib.request.urlopen(request) as response:
+                self.assertEqual(response.headers.get_content_type(),'audio/wav')
+                self.assertEqual(response.read(),self.audio().read_bytes())
+        finally: server.shutdown(); server.server_close(); thread.join()
+    def testStudioAdapterNullOutputMergeAndRetry(self):
+        from unittest.mock import patch
+        import generate_brief_audio
+        self.send(); saved=publish(self.bridge,self.brief()); audio=self.audio()
+        home=Path(self.temp.name)/'home'; connection=home/'Library/Application Support/NarrationStudio/Control/connection.json'
+        connection.parent.mkdir(parents=True); connection.write_text(json.dumps({'base_url':'http://127.0.0.1:8765','token':'synthetic-only'}))
+        calls=[]
+        class Response:
+            def __init__(self,value): self.data=json.dumps(value).encode()
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self,n): return self.data
+        class Opener:
+            def open(inner,request,timeout):
+                calls.append(request)
+                if request.method=='POST' and request.full_url.endswith('/v1/projects'): return Response({'status_url':'/v1/projects/synthetic'})
+                if request.method=='POST': return Response({'status_url':'/v1/operations/synthetic'})
+                if '/operations/' in request.full_url: return Response({'status':'succeeded'})
+                if len(calls)<4: return Response({'app':{'connected':True},'status':'ready','revision':1,'selection_key':'synthetic','output':None})
+                return Response({'app':{'connected':True},'status':'merged','output':{'is_current':True,'audio_path':str(audio),'sha256':hashlib.sha256(audio.read_bytes()).hexdigest()}})
+        with patch('generate_brief_audio.Path.home',return_value=home), patch('generate_brief_audio.urllib.request.build_opener',return_value=Opener()), patch('generate_brief_audio.time.sleep'):
+            first=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
+            count=len(calls)
+            second=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
+        self.assertEqual(first,second); self.assertEqual(len(calls),count)
+
+    def testStudioFloatWavAndNonfiniteRejected(self):
+        import struct
+        from daily_brief import wav_duration
+        fmt=struct.pack('<HHIIHH',3,1,24000,96000,4,32)
+        def wave(payload):
+            body=b'WAVEfmt '+struct.pack('<I',len(fmt))+fmt+b'data'+struct.pack('<I',len(payload))+payload
+            return b'RIFF'+struct.pack('<I',len(body))+body
+        self.assertAlmostEqual(wav_duration(wave(struct.pack('<ff',.1,.2))),2/24000)
+        with self.assertRaises(BridgeError): wav_duration(wave(struct.pack('<f',float('nan'))))

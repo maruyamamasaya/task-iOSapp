@@ -72,11 +72,89 @@ def publish(bridge, value):
     brief_key = key('dailyBrief', value['date'], value['timeZone'])
     result = {**value, 'text': value['text'].strip(),
               'generatedAt': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')}
+    result['briefID'] = brief_id(result)
     with bridge.connect() as db:
         db.execute('BEGIN IMMEDIATE')
         row = db.execute('SELECT value FROM metadata WHERE key=?', (context_key,)).fetchone()
         if not row or json.loads(row[0])['contextID'] != value['contextID']:
             raise BridgeError(409, 'daily_context_changed')
+        existing = db.execute('SELECT value FROM metadata WHERE key=?', (brief_key,)).fetchone()
+        if existing and brief_id(json.loads(existing[0])) == result['briefID']:
+            return json.loads(existing[0])
         db.execute('INSERT INTO metadata VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
                    (brief_key, canonical(result)))
     return result
+
+
+MAX_AUDIO_BYTES = 12 * 1024 * 1024
+
+def brief_id(value):
+    return hashlib.sha256(canonical({k: value[k] for k in ('date', 'timeZone', 'contextID', 'kind', 'text')}).encode()).hexdigest()
+
+def attach_audio(bridge, day, zone, expected_id, source):
+    """Explicit local completion event; never accepts arbitrary paths from the network."""
+    import os
+    from pathlib import Path
+    if Path(source).stat().st_size > MAX_AUDIO_BYTES: raise BridgeError(413, 'audio_size')
+    data = Path(source).read_bytes()
+    if not 44 <= len(data) <= MAX_AUDIO_BYTES: raise BridgeError(413, 'audio_size')
+    duration = wav_duration(data)
+    digest = hashlib.sha256(data).hexdigest()
+    folder = Path(bridge.path).parent / 'daily-audio'
+    folder.mkdir(mode=0o700, exist_ok=True)
+    target = folder / (digest + '.wav')
+    if not target.exists():
+        import tempfile
+        fd, temp = tempfile.mkstemp(dir=folder)
+        try:
+            with os.fdopen(fd, 'wb') as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
+            os.replace(temp, target)
+        finally:
+            if os.path.exists(temp): os.unlink(temp)
+    with bridge.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        row = db.execute('SELECT value FROM metadata WHERE key=?', (key('dailyBrief', day, zone),)).fetchone()
+        if not row: raise BridgeError(404, 'brief_missing')
+        result = json.loads(row[0])
+        if brief_id(result) != expected_id: raise BridgeError(409, 'brief_changed')
+        result['briefID'] = expected_id
+        result['audio'] = {'sha256': digest, 'byteCount': len(data), 'contentType': 'audio/wav', 'duration': duration}
+        db.execute('UPDATE metadata SET value=? WHERE key=?', (canonical(result), key('dailyBrief', day, zone)))
+    return result
+
+def audio_bytes(bridge, digest):
+    from pathlib import Path
+    if not re.fullmatch('[a-f0-9]{64}', digest): raise BridgeError(400, 'invalid_audio_id')
+    # Only referenced audio may be fetched; no path input or directory listing.
+    with bridge.connect() as db:
+        values = db.execute("SELECT value FROM metadata WHERE key LIKE 'dailyBrief:%'").fetchall()
+    if not any(json.loads(row[0]).get('audio', {}).get('sha256') == digest for row in values):
+        raise BridgeError(404, 'audio_missing')
+    path = Path(bridge.path).parent / 'daily-audio' / (digest + '.wav')
+    try: data = path.read_bytes()
+    except OSError: raise BridgeError(404, 'audio_missing')
+    if len(data) > MAX_AUDIO_BYTES or hashlib.sha256(data).hexdigest() != digest:
+        raise BridgeError(503, 'audio_corrupt')
+    return data
+
+
+def wav_duration(data):
+    """Accept Studio IEEE float WAV and PCM without adding a scipy dependency."""
+    import struct, math
+    try:
+        if data[:4] != b'RIFF' or data[8:12] != b'WAVE' or struct.unpack_from('<I',data,4)[0]+8 != len(data): raise ValueError()
+        pos=12; fmt=None; payload=None
+        while pos+8<=len(data):
+            kind=data[pos:pos+4]; size=struct.unpack_from('<I',data,pos+4)[0]; pos+=8
+            if pos+size>len(data): raise ValueError()
+            if kind==b'fmt ': fmt=data[pos:pos+size]
+            if kind==b'data': payload=data[pos:pos+size]
+            pos+=size+(size%2)
+        if fmt is None or len(fmt)<16 or not payload: raise ValueError()
+        encoding,channels,rate,byte_rate,align,bits=struct.unpack_from('<HHIIHH',fmt)
+        if encoding not in (1,3) or channels not in (1,2) or not 8000<=rate<=192000: raise ValueError()
+        if bits not in (16,24,32) or align!=channels*bits//8 or byte_rate!=rate*align or len(payload)%align: raise ValueError()
+        if encoding==3:
+            if bits!=32 or any(not math.isfinite(v[0]) for v in struct.iter_unpack('<f',payload)): raise ValueError()
+        return len(payload)/align/rate
+    except (ValueError,struct.error): raise BridgeError(400,'invalid_wav')
