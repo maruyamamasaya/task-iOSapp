@@ -5,6 +5,29 @@ enum NotificationPermissionStatus: String, Sendable {
     case notDetermined = "未設定", denied = "拒否", authorized = "許可"
 }
 
+enum NotificationItemTarget: Equatable, Identifiable, Sendable {
+    case task(UUID), event(UUID)
+
+    var id: String {
+        switch self {
+        case let .task(id): UserNotificationService.taskIdentifier(id)
+        case let .event(id): UserNotificationService.eventIdentifier(id)
+        }
+    }
+    var userInfo: [String: String] { ["itemTarget": id] }
+
+    init?(identifier: String) {
+        let prefix: String
+        if identifier.hasPrefix("task-") { prefix = "task-" }
+        else if identifier.hasPrefix("event-") { prefix = "event-" }
+        else { return nil }
+        let suffix = identifier.dropFirst(prefix.count)
+        guard suffix.count >= 36, let uuid = UUID(uuidString: String(suffix.prefix(36))),
+              suffix.count == 36 || suffix.dropFirst(36).hasPrefix("-") else { return nil }
+        self = prefix == "task-" ? .task(uuid) : .event(uuid)
+    }
+}
+
 protocol NotificationService: Sendable {
     func authorizationStatus() async -> NotificationPermissionStatus
     func requestAuthorization() async -> Bool
@@ -69,6 +92,7 @@ final class UserNotificationService: NotificationService, @unchecked Sendable {
     }
     private func schedule(identifier: String, title: String, body: String, date: Date) async {
         let content = UNMutableNotificationContent(); content.title = title; content.body = body; content.sound = .default
+        content.userInfo = NotificationItemTarget(identifier: identifier)?.userInfo ?? [:]
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))
         try? await center.add(request)

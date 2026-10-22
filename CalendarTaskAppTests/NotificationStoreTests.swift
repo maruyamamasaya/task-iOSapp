@@ -14,6 +14,18 @@ private actor MockNotificationService: NotificationService {
 }
 
 final class NotificationStoreTests: XCTestCase {
+    func testNotificationTargetsResolvePayloadAndLegacyOccurrenceIdentifiers() {
+        let id = UUID()
+        for target in [NotificationItemTarget.task(id), .event(id)] {
+            XCTAssertEqual(NotificationItemTarget(identifier: target.userInfo["itemTarget"]!), target)
+            XCTAssertEqual(NotificationItemTarget(identifier: target.id), target)
+            XCTAssertEqual(NotificationItemTarget(identifier: target.id + "-1792594800"), target)
+        }
+        XCTAssertNil(NotificationItemTarget(identifier: "daily-brief-test"))
+        XCTAssertNil(NotificationItemTarget(identifier: "task-invalid"))
+        XCTAssertNil(NotificationItemTarget(identifier: "event-" + id.uuidString + "invalid"))
+    }
+
     func testTaskNotificationDisplaysTaskTitleInBody() {
         let text = UserNotificationService.taskNotificationText(title: "請求書を送る")
         XCTAssertEqual(text.title, "タスクの時間です")

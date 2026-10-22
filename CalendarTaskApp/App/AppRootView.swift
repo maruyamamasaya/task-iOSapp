@@ -7,6 +7,7 @@ struct AppRootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var settings: SettingsStore
     @ObservedObject private var playbackRouter = BriefPlaybackRouter.shared
+    @ObservedObject private var notificationRouter = NotificationItemRouter.shared
     @State private var selectedRoute: AppRoute
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
@@ -70,6 +71,9 @@ struct AppRootView: View {
             guard phase == .active else { return }
             Task { await dependencies.rescheduleNotificationsIfAuthorized() }
         }
+        .sheet(item: $notificationRouter.request) { target in
+            NotificationItemDetailView(target: target, dependencies: dependencies)
+        }
         .sheet(item: $playbackRouter.request) { BriefPlaybackView(request: $0) }
         .onOpenURL { url in
             guard url.scheme?.lowercased() == "calendartaskapp" else { return }
@@ -86,6 +90,59 @@ struct AppRootView: View {
     }
     private var colorScheme: ColorScheme? { switch settings.appearance { case .system: nil; case .light: .light; case .dark: .dark } }
     static func route(for tab: InitialAppTab) -> AppRoute { switch tab { case .today: .today; case .calendar: .calendar; case .tasks: .tasks } }
+}
+
+private struct NotificationItemDetailView: View {
+    let target: NotificationItemTarget
+    let dependencies: AppDependencies
+    @Environment(\.dismiss) private var dismiss
+    @State private var route: EditorRoute?
+    @State private var message: String?
+
+    var body: some View {
+        Group {
+            if let route {
+                EditorHostView(route: route, noteForDate: { _ in nil },
+                               saveTask: { await dependencies.taskStore.update($0) },
+                               deleteTask: { await dependencies.taskStore.delete(id: $0) },
+                               saveEvent: { await dependencies.calendarStore.update($0) },
+                               deleteEvent: { await dependencies.calendarStore.delete(id: $0) },
+                               saveNote: { _ in }, deleteNote: { _ in })
+            } else {
+                NavigationStack {
+                    Group {
+                        if let message { ContentUnavailableView(message, systemImage: "doc.text.magnifyingglass") }
+                        else { ProgressView("読み込み中") }
+                    }
+                    .themedScreen()
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
+                }
+            }
+        }
+        .task(id: target.id) {
+            route = nil
+            message = nil
+            switch target {
+            case let .task(id):
+                await dependencies.plannerTaskStore.load()
+                await dependencies.taskStore.load()
+                if let task = dependencies.plannerTaskStore.tasks.first(where: { $0.id == id })
+                    ?? dependencies.taskStore.tasks.first(where: { $0.id == id }) {
+                    route = .task(task)
+                } else {
+                    message = dependencies.plannerTaskStore.errorMessage ?? dependencies.taskStore.errorMessage
+                        ?? "このタスクは見つかりませんでした"
+                }
+            case let .event(id):
+                await dependencies.calendarStore.load()
+                if let event = dependencies.calendarStore.events.first(where: { $0.id == id }) {
+                    route = .event(event)
+                } else {
+                    message = dependencies.calendarStore.errorMessage ?? "この予定は見つかりませんでした"
+                }
+            }
+        }
+    }
 }
 
 extension AppTheme {

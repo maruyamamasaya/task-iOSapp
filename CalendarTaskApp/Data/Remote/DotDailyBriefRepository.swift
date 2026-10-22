@@ -133,27 +133,147 @@ struct BriefPlaybackView: View {
     @State private var brief: DailyBrief?
     @State private var player: AVAudioPlayer?
     @State private var message: String?
+    @State private var position: Double = 0
+    @State private var isPlaying = false
+    @State private var isSeeking = false
+    private let ticker = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
+
     var body: some View {
         NavigationStack {
-            ScrollView { VStack(alignment: .leading, spacing: 16) {
-                if let brief { Text(brief.date).font(.caption); Text(brief.text) }
-                if player != nil {
-                    Button("再生") { play() }
-                    Button("停止") { player?.stop() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if let brief {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(brief.date, systemImage: "calendar")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                            Text("Dotのひとこと")
+                                .font(.title2.bold())
+                            Text("今日の流れを、ゆっくり確認しましょう。")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let player { audioControls(player) }
+                        VStack(alignment: .leading, spacing: 16) {
+                            Label("今日の見通し", systemImage: "sun.horizon")
+                                .font(.headline)
+                                .foregroundStyle(.tint)
+                            Text(brief.text)
+                                .font(.body)
+                                .lineSpacing(8)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(22)
+                        .background(.background, in: RoundedRectangle(cornerRadius: 24))
+                    } else if message == nil {
+                        ProgressView("見通しを読み込んでいます…")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 48)
+                    }
+                    if let message {
+                        Label(message, systemImage: "exclamationmark.circle")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 20))
+                    }
                 }
-                if let message { Text(message).foregroundStyle(.secondary) }
-            }.padding() }.navigationTitle("今日の見通し")
+                .padding(20)
+            }
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle("今日の見通し")
+            .navigationBarTitleDisplayMode(.inline)
         }
         .task {
-            do { let (saved, url) = try DotDailyBriefRepository.playback(request)
-                brief = saved; player = try AVAudioPlayer(contentsOf: url); play()
+            do {
+                let (saved, url) = try DotDailyBriefRepository.playback(request)
+                brief = saved
+                player = try AVAudioPlayer(contentsOf: url)
+                play()
             } catch { message = "音声を確認できません。Mac接続中に今日の画面を更新してください。" }
         }
-        .onDisappear { player?.stop(); try? AVAudioSession.sharedInstance().setActive(false) }
+        .onReceive(ticker) { _ in
+            guard let player, !isSeeking else { return }
+            position = player.currentTime
+            isPlaying = player.isPlaying
+        }
+        .onDisappear {
+            player?.stop()
+            isPlaying = false
+            try? AVAudioSession.sharedInstance().setActive(false)
+        }
     }
+
+    private func audioControls(_ player: AVAudioPlayer) -> some View {
+        VStack(spacing: 16) {
+            HStack {
+                Label("音声で聴く", systemImage: "waveform")
+                    .font(.headline)
+                Spacer()
+                Text(isPlaying ? "再生中" : "停止中")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            VStack(spacing: 4) {
+                Slider(value: $position, in: 0...max(player.duration, 0.01)) { editing in
+                    isSeeking = editing
+                    if !editing { player.currentTime = position }
+                }
+                .accessibilityLabel("再生位置")
+                .accessibilityValue("\(timeLabel(position)) / \(timeLabel(player.duration))")
+                HStack {
+                    Text(timeLabel(position))
+                    Spacer()
+                    Text(timeLabel(player.duration))
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 20) {
+                Button {
+                    if isPlaying {
+                        player.pause()
+                        isPlaying = false
+                    } else { play() }
+                } label: {
+                    Label(isPlaying ? "一時停止" : "再生", systemImage: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                Button {
+                    player.stop()
+                    player.currentTime = 0
+                    position = 0
+                    isPlaying = false
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("停止して先頭に戻る")
+            }
+        }
+        .padding(20)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func timeLabel(_ time: TimeInterval) -> String {
+        let seconds = Int(max(0, time))
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     private func play() {
-        do { try AVAudioSession.sharedInstance().setCategory(.playback); try AVAudioSession.sharedInstance().setActive(true)
-            guard player?.play() == true else { throw CocoaError(.fileReadUnknown) }; message = nil
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback)
+            try AVAudioSession.sharedInstance().setActive(true)
+            guard player?.play() == true else { throw CocoaError(.fileReadUnknown) }
+            isPlaying = true
+            message = nil
         } catch { message = "音声を再生できません。" }
     }
 }
