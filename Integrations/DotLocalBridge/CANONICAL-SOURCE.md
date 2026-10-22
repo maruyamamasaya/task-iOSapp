@@ -17,6 +17,17 @@ sample-taskは合成例。実際の安定slugと直前に読んだrevisionへ置
 
 readはJSONを読むだけでなく、中断した受信済み操作の回復とSQLite投影を行う。厳密な読取り限定の確認には、整合した隔離コピーを使用する。古い会話やSQLiteの内容でJSONを上書きしない。
 
+## 依頼参照と読取り監査
+
+```sh
+python3 canonical_tasks.py create --task-id sample-task --expected-revision 0 --changes-file /path/to/private-changes.json --request-ref sample-message:item-one
+python3 canonical_tasks.py audit --as-of 2026-10-22
+```
+
+sample参照は合成例で、実際に取得した依頼/項目参照へ置換する。既存aiContextへ追記して元の根拠を保ち、同一参照の別slug二重作成を拒否。同じslug/同じ内容のcreate再実行は既存revisionを返す。参照未取得を架空の受付済みにしない。
+
+auditはBridgeの初期化・受信回復・DB投影を行わず、正本ファイルとread-only SQLiteから整合/分類/件数/重複候補を確認する。sourceが読取り中に変われば結果を採用せず再試行。候補を自動統合・再配分・削除しない。受付待ちqueueや定期実行を追加したものではない。管理上の意味と残る限界は[共通手順](../../docs/dot-task-integration.md#追加後の管理と抜け漏れ防止)へ集約。
+
 ## 完了・確認応答
 
 認証済みiPhoneの完了変更は、受信箱commit後にrevision一致を条件として自動適用する。正本保存・読戻し後に同じoperation IDへのapplied応答を返す。Mac受信だけでは適用完了としない。通常の手動applyは不要。

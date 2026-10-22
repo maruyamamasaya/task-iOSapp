@@ -232,4 +232,42 @@ class CanonicalHTTPTests(Fixture, unittest.TestCase):
         status, receipt = self.post(op)
         self.assertEqual(status, 200); self.assertEqual(receipt['status'], 'applied')
 
+
+
+class RequestTraceTests(Fixture,unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.source=CanonicalBridge(self.root/'bridge.sqlite','test-bridge',self.dot)
+    def changes(self):return {key:value for key,value in TASK.items() if key not in ('id','revision')}
+    def testSameRequestReplayReusesRevisionAndRejectsOtherSlug(self):
+        first=self.source.update('synthetic-request-one',0,self.changes(),create=True,request_ref='synthetic-message:item-one')
+        again=self.source.update('synthetic-request-one',0,self.changes(),create=True,request_ref='synthetic-message:item-one')
+        self.assertEqual(first,again);self.assertEqual(first['revision'],1)
+        with self.assertRaises(BridgeError):self.source.update('synthetic-request-two',0,self.changes(),create=True,request_ref='synthetic-message:item-one')
+    def testMultiItemRequestUsesDistinctItemReferences(self):
+        self.source.update('synthetic-request-one',0,self.changes(),create=True,request_ref='synthetic-message:item-one')
+        self.source.update('synthetic-request-two',0,self.changes(),create=True,request_ref='synthetic-message:item-two')
+        self.assertEqual(len(self.source.feed()['tasks']),3)
+    def testReadOnlyAuditDoesNotMutateSourceOrResumePending(self):
+        from canonical_tasks import audit_document
+        before=self.dot.read_bytes()
+        report=audit_document(self.dot,self.root/'bridge.sqlite','2026-10-22')
+        self.assertTrue(report['readOnly']);self.assertEqual(report['taskCount'],1)
+        self.assertEqual(self.dot.read_bytes(),before)
+
+    def testRequestMarkerPreservesExistingContextAndUpdateIsIdempotent(self):
+        self.source.update(TASK['id'],1,{'aiContext':'\n元の根拠を保持\n'})
+        first=self.source.update(TASK['id'],2,{},request_ref='synthetic-message:edit-one')
+        self.assertTrue(first['aiContext'].startswith('\n元の根拠を保持\n'))
+        again=self.source.update(TASK['id'],first['revision'],{},request_ref='synthetic-message:edit-one')
+        self.assertEqual(first,again)
+
+    def testAuditSeparatesFixedDeadlineFromTentativeDate(self):
+        from canonical_tasks import audit_document
+        self.source.update(TASK['id'],1,{'date':'2026-10-24','deadlineDate':'2026-11-07','deadlineTime':'17:00','timeZone':'Asia/Tokyo'})
+        before=self.dot.read_bytes();report=audit_document(self.dot,self.root/'bridge.sqlite','2026-10-22')
+        self.assertEqual(report['fixedDeadlines'][0]['date'],'2026-11-07')
+        self.assertEqual(report['scheduledAfterDeadlineCandidates'],[])
+        self.assertEqual(self.dot.read_bytes(),before)
+
 if __name__ == '__main__': unittest.main()

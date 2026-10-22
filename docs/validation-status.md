@@ -16,7 +16,7 @@
 
 2026-10-22、Python全48件・Swift Package25件・iOSの音声保存/既存文章Store7件が成功。認証必須のloopback音声取得、無認証拒否、版違い/破損/非有限WAVの拒否、Studio API合成応答でのready→merge→保存、同一制作再利用を検証。iOSでは検証/atomic保存後のready通知、破損時の取得やり直し、永続通知予約の重複拒否を確認した。実際のOS通知表示・タップ・聴感試験ではない。
 
-最終アプリ/WidgetのSimulator build成功。新規Simulator/XCTestDevices作成削除0、XCTestDevices12KB。旧試験の待ちを解除し、端末outbox/Mac pending確認・退避後に中継と実機の更新を進める。続いて既存NarrationStudioで隔離短文の実TTS生成・APIマージ・音声取込を確認（7.04秒、675898 bytes、current/PCM/hash一致、再試行再利用）。既存署名の実機向けbuild成功。音声版とTLS取得修正版を既存署名で上書き導入。端末58件/全UUID/履歴7/outbox0、Mac正本SHA256/タスク/操作行を保持。27.84秒の既存見通し音声を実生成し、通常受信したiPhone内ファイル・対応文章のサイズ/hash/属性一致と通知予約1件を確認。本人がiPhoneで音声再生可能と報告し実再生確認済み。通知タップ経由と先のエラー表示消失の本人目視は未確認。仕様は[音声付き見通し](../Integrations/DotLocalBridge/DAILY-BRIEF.md)へ集約。
+最終アプリ/WidgetのSimulator build成功。新規Simulator/XCTestDevices作成削除0、XCTestDevices12KB。旧試験の待ちを解除し、端末outbox/Mac pending確認・退避後に中継と実機の更新を進める。続いて既存NarrationStudioで隔離短文の実TTS生成・APIマージ・音声取込を確認（7.04秒、675898 bytes、current/PCM/hash一致、再試行再利用）。既存署名の実機向けbuild成功。音声版とTLS取得修正版を既存署名で上書き導入。端末58件/全UUID/履歴7/outbox0、Mac正本SHA256/タスク/操作行を保持。27.84秒の既存見通し音声を実生成し、通常受信したiPhone内ファイル・対応文章のサイズ/hash/属性一致と通知予約1件を確認。本人がiPhoneで音声再生可能と報告し実再生確認済み。通知タップで対応画面が開き音声が聞こえたと本人確認済み。先のエラー表示消失の本人目視は未確認。仕様は[音声付き見通し](../Integrations/DotLocalBridge/DAILY-BRIEF.md)へ集約。
 
 読み上げ専用原稿への改善では、Studio公式原文/ガイドhash検査を再利用し、Python52件成功。実ガイドv0.9.5/最新v0.9.6を参照し、対応済みconversation-v0.9.3/ external-ai-plan-v1で4区間を実生成。改善版34.17秒のiPhone内音声・文章一致と新配信版の通知予約1件を確認。表示本文と正本は不変、再インストールなし。旧版の本人再生確認と、改善版の聴感評価（未取得）は区別する。
 
@@ -32,3 +32,5 @@
 ソース、合成fixture/tests、入力契約、再現可能な操作・復旧手順を公開対象とします。個人タスクJSON、受信箱・端末state、秘密鍵・認証値・ペアリング、個人の予定・実操作ID・端末識別子を含む検証記録、生成物、IDE個人設定はコミットへ含めません。
 
 個人情報を含む記録は削除せずローカル保持し、`.gitignore`で新規混入を防ぎます。除外は履歴を完成扱いする操作ではありません。正本データ・署名・App Group・実機試験状態は変更しません。
+
+依頼参照の重複保護とread-only auditはPython57件成功。58件の実正本をauditし分類漏れ0/pending0を確認。自動受付queue/定期照合はなく、会話依頼の未受付を完全検出する保証はない。音声の後続42.67秒版はMac保存済み、CoreDevice初期化タイムアウトにより端末保存/通知未確認。前版の本人通知タップ再生と混同しない。

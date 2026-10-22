@@ -5,6 +5,9 @@ import copy
 import fcntl
 import json
 import os
+import re
+import sqlite3
+import datetime as dt
 import uuid
 from pathlib import Path
 
@@ -97,14 +100,32 @@ class CanonicalBridge(Bridge):
     def bootstrap(self, feed):
         raise BridgeError(409, 'mac_canonical_source_already_selected')
 
-    def update(self, task_id, expected_revision, changes, create=False):
+    def update(self, task_id, expected_revision, changes, create=False, request_ref=None):
         allowed = {'title', 'date', 'dateLabel', 'status', 'details', 'category', 'subcategory', 'parentId', 'completed', 'project', 'tags', 'reminderAt', 'aiContext', 'startTime', 'endTime', 'timeZone', 'deadlineDate', 'deadlineTime'}
         if not isinstance(changes, dict) or changes.keys() - allowed: raise BridgeError(400, 'invalid_changes')
+        if create and expected_revision!=0: raise BridgeError(409,'task_exists')
         with self.locked():
             self._resume_received_locked()
             document = self.read_document()
             self.project(document)
             old = next((row for row in document['tasks'] if row['id'] == task_id), None)
+            if request_ref is not None:
+                if not isinstance(request_ref,str) or not re.fullmatch(r'[A-Za-z0-9:_-]{1,160}',request_ref):
+                    raise BridgeError(400,'invalid_request_reference')
+                marker='[request:'+request_ref+']'
+                linked=[row for row in document['tasks'] if marker in (row.get('aiContext') or '')]
+                changes=copy.deepcopy(changes)
+                context=changes.get('aiContext',old.get('aiContext','') if old else '')
+                if context is None:context=''
+                if not isinstance(context,str):raise BridgeError(400,'invalid_ai_context')
+                if marker not in context:context+=('' if not context or context.endswith('\n') else '\n')+marker
+                changes['aiContext']=context
+                if linked:
+                    if len(linked)!=1 or linked[0]['id']!=task_id:
+                        raise BridgeError(409,'request_already_recorded')
+                    if create:
+                        if all(linked[0].get(key)==value for key,value in changes.items()):return linked[0]
+                        raise BridgeError(409,'request_already_recorded')
             if create:
                 if old or expected_revision != 0: raise BridgeError(409, 'task_exists')
                 new = {**changes, 'id': task_id, 'revision': 1}
@@ -129,9 +150,43 @@ class CanonicalBridge(Bridge):
             return new
 
 
+
+def audit_document(source, database, as_of):
+    """Read-only consistency/load candidates, not an autonomous intake queue."""
+    from collections import Counter,defaultdict
+    import unicodedata,hashlib
+    day=dt.date.fromisoformat(as_of)
+    raw=Path(source).read_bytes();document=json.loads(raw);rows=document['tasks']
+    active=[row for row in rows if not row['completed'] and row['status'] not in ('保留','考え中','検討中','統合済み','統合済') and not row['title'].startswith('【統合済')]
+    dates=Counter(row['date'] for row in active if row.get('date') and day<=dt.date.fromisoformat(row['date'])<day+dt.timedelta(days=7))
+    titles=defaultdict(list);references=defaultdict(list)
+    for row in rows:
+        titles[re.sub(r'\s+','',unicodedata.normalize('NFKC',row['title']))].append(row['id'])
+        for reference in re.findall(r'\[request:([A-Za-z0-9:_-]{1,160})\]',row.get('aiContext') or ''):references[reference].append(row['id'])
+    with sqlite3.connect('file:'+str(Path(database).resolve())+'?mode=ro',uri=True) as db:
+        pending=db.execute("SELECT count(*) FROM operations WHERE status='received'").fetchone()[0]
+        states={status:count for status,count in db.execute("SELECT status,count(*) FROM operations GROUP BY status")}
+    if Path(source).read_bytes()!=raw:raise BridgeError(409,'source_changed_during_audit')
+    return {'readOnly':True,'asOf':as_of,'taskCount':len(rows),'uniqueIDs':len({row['id'] for row in rows}),
+            'missingProjectIDs':[row['id'] for row in rows if not row.get('project')],
+            'missingTagIDs':[row['id'] for row in rows if not row.get('tags')],
+            'invalidCategoryIDs':[row['id'] for row in rows if row['category'] not in ('work','private','other')],
+            'activeDayCounts':dict(sorted(dates.items())),
+            'fixedDeadlines':[{'id':row['id'],'date':row['deadlineDate'],'time':row.get('deadlineTime')} for row in rows if row.get('deadlineDate')],
+            'overdueScheduledIDs':[row['id'] for row in active if row.get('date') and dt.date.fromisoformat(row['date'])<day],
+            'scheduledAfterDeadlineCandidates':[row['id'] for row in active if row.get('date') and row.get('deadlineDate') and row['date']>row['deadlineDate']],
+            'daysAboveThreeItems':{date:count for date,count in dates.items() if count>3},
+            'sameTitleCandidates':[ids for ids in titles.values() if len(ids)>1],
+            'duplicateRequestReferences':{ref:ids for ref,ids in references.items() if len(set(ids))>1},
+            'tasksWithoutRequestReference':sum(not re.search(r'\[request:',row.get('aiContext') or '') for row in rows),
+            'pendingOperations':pending,'operationStates':states,'canonicalSHA256':hashlib.sha256(raw).hexdigest(),
+            'limits':'No intake queue, automatic scheduling or phone receipt assertion. Candidates are not automatic edits.'}
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['initialize', 'read', 'pending', 'update', 'create', 'apply'])
+    parser.add_argument('action', choices=['initialize', 'read', 'pending', 'update', 'create', 'apply', 'audit'])
+    parser.add_argument('--as-of', help='YYYY-MM-DD, required for read-only audit')
+    parser.add_argument('--request-ref', help='Stable request + item reference, recorded in aiContext')
     parser.add_argument('--task-id')
     parser.add_argument('--expected-revision', type=int)
     parser.add_argument('--changes-file', type=Path)
@@ -139,6 +194,9 @@ def main():
     args = parser.parse_args()
     config = json.loads((ROOT / 'relay-config.json').read_text())
     source = ROOT / 'state/tasks.json'
+    if args.action=='audit':
+        if not args.as_of: parser.error('--as-of required for audit')
+        print(canonical(audit_document(source,ROOT/'state/bridge.sqlite',args.as_of))); return
     bridge = CanonicalBridge(ROOT / 'state/bridge.sqlite', config['bridgeID'], source)
     try:
         if args.action == 'initialize':
@@ -164,7 +222,7 @@ def main():
         else:
             if not args.task_id or args.expected_revision is None or not args.changes_file:
                 parser.error('--task-id, --expected-revision and --changes-file required')
-            result = bridge.update(args.task_id, args.expected_revision, json.loads(args.changes_file.read_text()), create=args.action == 'create')
+            result = bridge.update(args.task_id, args.expected_revision, json.loads(args.changes_file.read_text()), create=args.action == 'create',request_ref=args.request_ref)
         print(canonical(result))
     except BridgeError as error:
         print(canonical({'error': error.code})); raise SystemExit(1)
