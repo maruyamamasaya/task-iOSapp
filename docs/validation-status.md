@@ -16,7 +16,7 @@
 
 2026-10-22、Python全48件・Swift Package25件・iOSの音声保存/既存文章Store7件が成功。認証必須のloopback音声取得、無認証拒否、版違い/破損/非有限WAVの拒否、Studio API合成応答でのready→merge→保存、同一制作再利用を検証。iOSでは検証/atomic保存後のready通知、破損時の取得やり直し、永続通知予約の重複拒否を確認した。実際のOS通知表示・タップ・聴感試験ではない。
 
-最終アプリ/WidgetのSimulator build成功。新規Simulator/XCTestDevices作成削除0、XCTestDevices12KB。稼働中継/実機は他担当のオフライン試験保護のため未更新。新しいTTS実生成・通知タップ・物理スピーカー再生は未確認。仕様は[音声付き見通し](../Integrations/DotLocalBridge/DAILY-BRIEF.md)へ集約。
+最終アプリ/WidgetのSimulator build成功。新規Simulator/XCTestDevices作成削除0、XCTestDevices12KB。稼働中継/実機は他担当のオフライン試験保護のため未更新。続いて既存NarrationStudioで隔離短文の実TTS生成・APIマージ・音声取込を確認（7.04秒、675898 bytes、current/PCM/hash一致、再試行再利用）。既存署名の実機向けbuild成功。音声の端末受信・通知タップ・物理スピーカー再生は未確認。仕様は[音声付き見通し](../Integrations/DotLocalBridge/DAILY-BRIEF.md)へ集約。
 
 ## 未完了・未導入
 
