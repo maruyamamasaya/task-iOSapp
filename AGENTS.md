@@ -22,7 +22,7 @@ Dotタスクを作成・更新する前に、必ず [docs/dot-task-integration.m
 
 ## Dotのひとこと
 
-本人がDotチャットで見通し・振り返りの生成を頼んだ場合は、[Integrations/DotLocalBridge/DAILY-BRIEF.md](Integrations/DotLocalBridge/DAILY-BRIEF.md) の手順でアプリ受信材料を読み、生成文を正規CLIで保存・読戻しする。未受信・古い材料や未導入を生成/実機反映済みと扱わない。タスク正本と既存メモは変更しない。
+本人がDotチャットで見通し・振り返りの生成を頼んだ場合は、[Integrations/DotLocalBridge/DAILY-BRIEF.md](Integrations/DotLocalBridge/DAILY-BRIEF.md) の手順でアプリ受信材料を読み、生成文を正規CLIで保存・読戻しする。未受信・古い材料や未導入を生成/実機反映済みと扱わない。タスク正本と既存メモは変更しない。 会話らしい音声原稿の責務は同手順の「会話らしい音声原稿の責務」を正とし、dotが意味と原稿、NarrationStudioが対応済みの声の表現、アプリが保存・通知・再生を担当する。
 
 ## アーキテクチャ
 
