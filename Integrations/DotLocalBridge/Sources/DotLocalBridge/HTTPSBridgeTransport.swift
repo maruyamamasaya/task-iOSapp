@@ -18,6 +18,10 @@ private final class PinnedSessionDelegate: NSObject, URLSessionDelegate, URLSess
         // Exact pre-approved leaf pin establishes pairing; no system trust-store modification.
         completionHandler(.useCredential, URLCredential(trust: trust))
     }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        urlSession(session, didReceive: challenge, completionHandler: completionHandler)
+    }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
 }
@@ -27,6 +31,7 @@ public final class HTTPSBridgeTransport: BridgeTransport, @unchecked Sendable {
     private let base: URL
     private let bearer: String
     private let session: URLSession
+    private let pinnedDelegate: PinnedSessionDelegate
     public init(base: URL, certificateSHA256: String, bearer: String) throws {
         guard base.scheme == "https", let host = base.host,
               (host.hasSuffix(".local") || Self.isPrivateIPv4(host)),
@@ -39,7 +44,8 @@ public final class HTTPSBridgeTransport: BridgeTransport, @unchecked Sendable {
         config.httpCookieStorage = nil; config.httpShouldSetCookies = false
         config.urlCredentialStorage = nil; config.urlCache = nil
         config.requestCachePolicy = .reloadIgnoringLocalCacheData; config.timeoutIntervalForRequest = 10
-        session = URLSession(configuration: config, delegate: PinnedSessionDelegate(pin: certificateSHA256.lowercased()), delegateQueue: nil)
+        pinnedDelegate = PinnedSessionDelegate(pin: certificateSHA256.lowercased())
+        session = URLSession(configuration: config, delegate: pinnedDelegate, delegateQueue: nil)
     }
     private static func isPrivateIPv4(_ host: String) -> Bool {
         let parts = host.split(separator: ".").compactMap { Int($0) }
@@ -84,7 +90,7 @@ public final class HTTPSBridgeTransport: BridgeTransport, @unchecked Sendable {
         let url = base.appending(path: "v1/daily-audio/" + sha256)
         var request = URLRequest(url: url)
         request.setValue("Bearer " + bearer, forHTTPHeaderField: "Authorization")
-        let (bytes, response) = try await session.bytes(for: request)
+        let (bytes, response) = try await session.bytes(for: request, delegate: pinnedDelegate)
         guard let response = response as? HTTPURLResponse, response.url == url,
               response.statusCode == 200, response.mimeType == "audio/wav",
               response.expectedContentLength <= 12 * 1024 * 1024 else { throw BridgeNetworkError.unexpectedResponse }

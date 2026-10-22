@@ -64,6 +64,8 @@ Dotタスクを作成・更新する前に、必ず [docs/dot-task-integration.m
 - UI変更時は Home / Calendar / Tasks / Settings、作成・編集・削除、QuickAdd、空状態とエラー状態を該当範囲で目視確認する。永続化変更時は再起動後の読込、移行、バックアップ、Widget共有を確認する。
 - `git diff` でスコープ外変更がないことも確認する。
 
+実機オフライン操作は毎回の更新条件にしない。同期/outbox/再送/競合の実質変更や関連不具合時の回帰範囲は `docs/dot-task-integration.md` の現行運用に従う。
+
 ### Xcode のストレージ管理
 
 - テストが必要な場合は、既存の Simulator を1台だけ使用する。新しい Simulator、テスト端末、ランタイムを必要なく作成・ダウンロードしない。

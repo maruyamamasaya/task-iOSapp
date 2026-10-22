@@ -37,7 +37,7 @@ def generate(bridge, day, zone, timeout=1200):
     # Stable request IDs let interrupted generation resume the original production.
     request_id = str(uuid.uuid5(uuid.NAMESPACE_URL, 'taskapp-brief:'+identity))
     result = call('POST', '/v1/projects', {'request_id':request_id, 'title':'今日の見通し', 'text':brief['text']})
-    path = result['status_url']; deadline=time.monotonic()+timeout
+    path = result['status_url']; deadline=time.monotonic()+timeout; merge_attempt=0
     while time.monotonic()<deadline:
         state=call('GET', path)
         if state.get('app', {}).get('connected') is not True: raise ValueError('studio_disconnected')
@@ -48,12 +48,15 @@ def generate(bridge, day, zone, timeout=1200):
             if hashlib.sha256(source.read_bytes()).hexdigest()!=state['output']['sha256']: raise ValueError('studio_hash')
             return attach_audio(bridge, day, zone, identity, source)
         if state.get('ready') or state.get('status')=='ready':
-            operation=call('POST',path+'/merge',{'request_id':str(uuid.uuid5(uuid.NAMESPACE_URL,identity+':merge:'+state['selection_key'])),
+            operation=call('POST',path+'/merge',{'request_id':str(uuid.uuid5(uuid.NAMESPACE_URL,identity+':merge:'+state['selection_key']+':rev:'+str(state['revision'])+':attempt:'+str(merge_attempt))),
                          'expected_revision':state['revision'],'selection_key':state['selection_key']})
             operation_path=operation['status_url']
             while time.monotonic()<deadline:
-                status=call('GET',operation_path)['status']
+                checked=call('GET',operation_path); status=checked['status']
                 if status=='succeeded': break
+                if status=='failed' and checked.get('error',{}).get('code') in ('busy','revision_conflict','selection_conflict') and merge_attempt<5:
+                    merge_attempt+=1
+                    break # Confirmed terminal failure: new ID, refreshed state, never regenerate candidates.
                 if status in ('failed','cancelled'): raise ValueError('studio_merge_failed')
                 time.sleep(2)
         time.sleep(2)

@@ -145,7 +145,7 @@ class BriefAudioTests(unittest.TestCase):
         self.send(); saved=publish(self.bridge,self.brief()); audio=self.audio()
         home=Path(self.temp.name)/'home'; connection=home/'Library/Application Support/NarrationStudio/Control/connection.json'
         connection.parent.mkdir(parents=True); connection.write_text(json.dumps({'base_url':'http://127.0.0.1:8765','token':'synthetic-only'}))
-        calls=[]
+        calls=[]; attempts=[]; merged=[False]
         class Response:
             def __init__(self,value): self.data=json.dumps(value).encode()
             def __enter__(self): return self
@@ -155,15 +155,19 @@ class BriefAudioTests(unittest.TestCase):
             def open(inner,request,timeout):
                 calls.append(request)
                 if request.method=='POST' and request.full_url.endswith('/v1/projects'): return Response({'status_url':'/v1/projects/synthetic'})
-                if request.method=='POST': return Response({'status_url':'/v1/operations/synthetic'})
-                if '/operations/' in request.full_url: return Response({'status':'succeeded'})
-                if len(calls)<4: return Response({'app':{'connected':True},'status':'ready','revision':1,'selection_key':'synthetic','output':None})
+                if request.method=='POST':
+                    attempts.append(json.loads(request.data)['request_id']); return Response({'status_url':'/v1/operations/synthetic'})
+                if '/operations/' in request.full_url:
+                    if len(attempts)==1: return Response({'status':'failed','error':{'code':'busy'}})
+                    merged[0]=True; return Response({'status':'succeeded'})
+                if not merged[0]: return Response({'app':{'connected':True},'status':'ready','revision':1,'selection_key':'synthetic','output':None})
                 return Response({'app':{'connected':True},'status':'merged','output':{'is_current':True,'audio_path':str(audio),'sha256':hashlib.sha256(audio.read_bytes()).hexdigest()}})
         with patch('generate_brief_audio.Path.home',return_value=home), patch('generate_brief_audio.urllib.request.build_opener',return_value=Opener()), patch('generate_brief_audio.time.sleep'):
             first=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
             count=len(calls)
             second=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
         self.assertEqual(first,second); self.assertEqual(len(calls),count)
+        self.assertEqual(len(attempts),2); self.assertNotEqual(attempts[0],attempts[1])
 
     def testStudioFloatWavAndNonfiniteRejected(self):
         import struct
