@@ -162,10 +162,11 @@ class BriefAudioTests(unittest.TestCase):
                     merged[0]=True; return Response({'status':'succeeded'})
                 if not merged[0]: return Response({'app':{'connected':True},'status':'ready','revision':1,'selection_key':'synthetic','output':None})
                 return Response({'app':{'connected':True},'status':'merged','output':{'is_current':True,'audio_path':str(audio),'sha256':hashlib.sha256(audio.read_bytes()).hexdigest()}})
-        with patch('generate_brief_audio.Path.home',return_value=home), patch('generate_brief_audio.urllib.request.build_opener',return_value=Opener()), patch('generate_brief_audio.time.sleep'):
-            first=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
+        authored={'text':saved['text'],'request_id':'synthetic-request','speech_plan':{'profile':'conversation-v0.9.3','author':'synthetic','units':[{'text':'合成の見通し','pace':'normal','pause_after':0}]}}
+        with patch('generate_brief_audio.load_handoff',return_value=(authored,{'synthetic-guide':'hash'})), patch('generate_brief_audio.Path.home',return_value=home), patch('generate_brief_audio.urllib.request.build_opener',return_value=Opener()), patch('generate_brief_audio.time.sleep'):
+            first=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'],handoff=Path('synthetic-reviewed'))
             count=len(calls)
-            second=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'])
+            second=generate_brief_audio.generate(self.bridge,saved['date'],saved['timeZone'],handoff=Path('synthetic-reviewed'))
         self.assertEqual(first,second); self.assertEqual(len(calls),count)
         self.assertEqual(len(attempts),2); self.assertNotEqual(attempts[0],attempts[1])
 
@@ -178,3 +179,13 @@ class BriefAudioTests(unittest.TestCase):
             return b'RIFF'+struct.pack('<I',len(body))+body
         self.assertAlmostEqual(wav_duration(wave(struct.pack('<ff',.1,.2))),2/24000)
         with self.assertRaises(BridgeError): wav_duration(wave(struct.pack('<f',float('nan'))))
+
+    def testSpeechEditionKeepsDisplayAndNotifiesOnlyNewEdition(self):
+        from daily_brief import attach_audio
+        self.send(); saved=publish(self.bridge,self.brief())
+        speech={'planSHA256':'a'*64,'speech_plan':{'units':[{'text':'音声専用原稿'}]}}
+        first=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio(),speech=speech)
+        again=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio(),speech=speech)
+        improved=attach_audio(self.bridge,saved['date'],saved['timeZone'],saved['briefID'],self.audio(),speech={**speech,'planSHA256':'b'*64})
+        self.assertEqual(first['briefID'],again['briefID']);self.assertNotEqual(first['briefID'],improved['briefID'])
+        self.assertEqual(first['text'],saved['text']);self.assertEqual(improved['contextID'],saved['contextID'])

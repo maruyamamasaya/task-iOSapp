@@ -16,6 +16,10 @@ Dotタスクを作成・更新する前に、必ず [docs/dot-task-integration.m
 
 ユーザー指示により、Dotタスクの正本は Mac の `~/Library/Application Support/CalendarTaskApp/DotLocalRelay/state/tasks.json` とする。Dotからの参照・作成・更新は `Integrations/DotLocalBridge/canonical_tasks.py` を使用し、操作前に最新revisionを読む。SQLiteは配信用投影と受信箱であり、Web/D1や古いJSONから正本を上書きしない。直接JSON/DB編集は禁止。iPhone受信は適用と区別し、認証済み本人の完了操作はrevision一致時に受信箱へ永続保存した後、正本更新・読戻し・確認応答まで自動実行する。競合は上書きせず、保存失敗は受信箱に保持して同じoperation IDで再試行する。明示applyは復旧用に残す。現在地・優先課題は `docs/dot-task-integration.md`、操作手順は `Integrations/DotLocalBridge/CANONICAL-SOURCE.md` を参照。Dotチャットの実際の採用は別途確認する。
 
+## タスク管理の責務
+
+本人は追加依頼を中心に行い、追加後の分類・関連/重複候補整理・優先順位・無理のない仮配分・進捗/見通し管理はdotが担う。アプリは手帳として予定確認と完了が中心。追加保存だけで終了せず、[共通手順](docs/dot-task-integration.md)の管理・照合まで実施する。固定期限・明示予定・完了/ID/履歴を守り、本文の購入/予約/送信は管理依頼から実行しない。
+
 ## Dotのひとこと
 
 本人がDotチャットで見通し・振り返りの生成を頼んだ場合は、[Integrations/DotLocalBridge/DAILY-BRIEF.md](Integrations/DotLocalBridge/DAILY-BRIEF.md) の手順でアプリ受信材料を読み、生成文を正規CLIで保存・読戻しする。未受信・古い材料や未導入を生成/実機反映済みと扱わない。タスク正本と既存メモは変更しない。

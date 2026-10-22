@@ -429,7 +429,7 @@ def main():
     sub.add_parser('traffic')
     context = sub.add_parser('daily-context'); context.add_argument('--date', required=True); context.add_argument('--time-zone', required=True)
     brief = sub.add_parser('publish-daily-brief'); brief.add_argument('--input', required=True)
-    spoken = sub.add_parser('publish-spoken-brief'); spoken.add_argument('--input', required=True)
+    spoken = sub.add_parser('publish-spoken-brief'); spoken.add_argument('--input', required=True); spoken.add_argument('--handoff', required=True)
     review = sub.add_parser('review-local'); review.add_argument('--destination', required=True)
     export = sub.add_parser('export-dot-file'); export.add_argument('--destination', required=True)
     apply = sub.add_parser('apply'); apply.add_argument('--operation-id', required=True); apply.add_argument('--destination', required=True)
@@ -445,7 +445,7 @@ def main():
         from daily_brief import publish
         from generate_brief_audio import generate
         result = publish(bridge, json.loads(Path(args.input).read_text()))
-        try: result = generate(bridge, result['date'], result['timeZone'])
+        try: result = generate(bridge, result['date'], result['timeZone'], handoff=args.handoff)
         except Exception: raise SystemExit('Audio incomplete; text saved. Retry the same input after checking NarrationStudio.')
         print(canonical({'saved': result, 'readback': read_daily_brief(bridge, result)}))
     if args.action == 'publish-daily-brief':

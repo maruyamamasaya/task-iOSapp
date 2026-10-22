@@ -91,7 +91,7 @@ MAX_AUDIO_BYTES = 12 * 1024 * 1024
 def brief_id(value):
     return hashlib.sha256(canonical({k: value[k] for k in ('date', 'timeZone', 'contextID', 'kind', 'text')}).encode()).hexdigest()
 
-def attach_audio(bridge, day, zone, expected_id, source):
+def attach_audio(bridge, day, zone, expected_id, source, speech=None):
     """Explicit local completion event; never accepts arbitrary paths from the network."""
     import os
     from pathlib import Path
@@ -117,7 +117,9 @@ def attach_audio(bridge, day, zone, expected_id, source):
         if not row: raise BridgeError(404, 'brief_missing')
         result = json.loads(row[0])
         if brief_id(result) != expected_id: raise BridgeError(409, 'brief_changed')
-        result['briefID'] = expected_id
+        result['briefID'] = expected_id if speech is None else hashlib.sha256((expected_id+':speech:'+speech['planSHA256']).encode()).hexdigest()
+        if speech is not None:
+            db.execute('INSERT INTO metadata VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',('dailySpeechPlan:'+expected_id,canonical(speech)))
         result['audio'] = {'sha256': digest, 'byteCount': len(data), 'contentType': 'audio/wav', 'duration': duration}
         db.execute('UPDATE metadata SET value=? WHERE key=?', (canonical(result), key('dailyBrief', day, zone)))
     return result
