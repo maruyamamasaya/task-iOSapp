@@ -7,6 +7,8 @@ import Combine
     @Published var selectedDate: Date
     @Published var memoText = ""
     @Published private(set) var errorMessage: String?
+    @Published private(set) var completionUndoTask: TaskItem?
+    @Published private(set) var isUndoingCompletion = false
     @Published private(set) var completions: [TaskCompletion] = []
     private let taskStore: TaskStore
     private let calendarStore: CalendarStore
@@ -15,6 +17,8 @@ import Combine
     private let recurrenceCalculator: RecurrenceCalculator
     private let dateProvider: any DateProviding
     private let settingsStore: SettingsStore
+    private var completionActionGeneration = 0
+    private var followsToday = true
     private var memoSaveTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     private let haptics: any HapticService
@@ -30,9 +34,36 @@ import Combine
         taskCompletionStore.$completions.sink { [weak self] in self?.completions = $0 }.store(in: &cancellables)
         settingsStore.$showCompletedTasksToday.dropFirst().sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
     }
+    var dailyBriefContext: DailyBriefContext {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        // Include completed occurrences even when the planner's display setting hides them.
+        let dailyTasks = tasks.compactMap { projectedTask($0, on: selectedDate) }
+        let undatedTasks = tasks.filter { $0.dueDate == nil && $0.startDate == nil && !$0.isCompleted }
+        return DailyBriefContext(date: formatter.string(from: selectedDate), timeZone: calendar.timeZone.identifier,
+            tasks: (dailyTasks + undatedTasks).map { task in
+                let lines = task.note.components(separatedBy: "\n")
+                let details = lines.first?.hasPrefix("dot: ") == true ? lines.dropFirst(2).joined(separator: "\n") : task.note
+                return .init(id: task.id, title: task.title, details: details,
+                             scheduledAt: task.dueDate ?? task.startDate, completed: task.isCompleted)
+            }, events: dayEvents.map { .init(id: $0.id, title: $0.title, start: $0.startDate, end: $0.endDate, allDay: $0.isAllDay) })
+    }
     var dayTasks: [TaskItem] {
         tasks.compactMap { projectedTask($0, on: selectedDate) }.filter { settingsStore.showCompletedTasksToday || !$0.isCompleted }
             .sorted { ($0.dueDate ?? $0.startDate ?? .distantFuture) < ($1.dueDate ?? $1.startDate ?? .distantFuture) }
+    }
+    // Review remains available even when completed rows are hidden in the planner.
+    var completedDayTasks: [TaskItem] {
+        tasks.compactMap { projectedTask($0, on: selectedDate) }
+            .filter(\.isCompleted)
+            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
+    var pendingUnscheduledTasks: [TaskItem] {
+        (allDayTasks + unscheduledTasks).filter { !$0.isCompleted }
     }
     var dayEvents: [CalendarEvent] {
         events.compactMap { projectedEvent($0, on: selectedDate) }.sorted { $0.startDate < $1.startDate }
@@ -65,9 +96,15 @@ import Combine
     }
     func moveDay(by value: Int) async {
         selectedDate = Calendar.current.date(byAdding: .day, value: value, to: selectedDate) ?? selectedDate
+        followsToday = Calendar.current.isDate(selectedDate, inSameDayAs: dateProvider.now)
         await loadMemo()
     }
-    func returnToToday() async { selectedDate = dateProvider.now; await loadMemo() }
+    func returnToToday() async { followsToday = true; selectedDate = dateProvider.now; await loadMemo() }
+    func refreshDayBoundary(calendar: Calendar = .current) async {
+        guard followsToday, !calendar.isDate(selectedDate, inSameDayAs: dateProvider.now) else { return }
+        selectedDate = dateProvider.now
+        await loadMemo()
+    }
     func addTask(title: String, note: String, dueDate: Date, priority: TaskPriority) async {
         let now = dateProvider.now
         let task = TaskItem(id: UUID(), title: title.trimmingCharacters(in: .whitespacesAndNewlines), note: note,
@@ -123,10 +160,34 @@ import Combine
             haptics.completion()
             return
         }
+        completionActionGeneration += 1
+        let generation = completionActionGeneration
         var updated = task; updated.isCompleted.toggle()
         updated.completedAt = updated.isCompleted ? dateProvider.now : nil; updated.updatedAt = dateProvider.now
-        await taskStore.update(updated); tasks = taskStore.tasks; errorMessage = taskStore.errorMessage
-        haptics.completion()
+        let saved = await taskStore.update(updated)
+        tasks = taskStore.tasks; errorMessage = taskStore.errorMessage
+        if saved {
+            if generation == completionActionGeneration {
+                completionUndoTask = updated.isCompleted ? updated : nil
+            }
+            haptics.completion()
+        }
+    }
+    func undoLastCompletion(taskID: UUID) async {
+        guard !isUndoingCompletion, let previous = completionUndoTask, previous.id == taskID else { return }
+        completionActionGeneration += 1
+        let generation = completionActionGeneration
+        isUndoingCompletion = true
+        defer { isUndoingCompletion = false }
+        guard var current = taskStore.tasks.first(where: { $0.id == previous.id }), current.isCompleted else {
+            completionUndoTask = nil; return
+        }
+        current.isCompleted = false; current.completedAt = nil; current.updatedAt = dateProvider.now
+        if await taskStore.update(current) {
+            if generation == completionActionGeneration { completionUndoTask = nil }
+            haptics.action()
+        }
+        tasks = taskStore.tasks; errorMessage = taskStore.errorMessage
     }
     func scheduleMemoSave() {
         memoSaveTask?.cancel()

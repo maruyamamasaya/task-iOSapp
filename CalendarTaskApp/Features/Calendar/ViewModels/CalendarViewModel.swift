@@ -59,9 +59,10 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
             return calendar.isDate(date, equalTo: calendar.startOfDay(for: date), toGranularity: .minute)
         }
     }
-    var selectedTimelineItems: [DailyTimelineItem] {
-        let eventItems = selectedEvents.filter { !$0.isAllDay }.map(DailyTimelineItem.init(event:))
-        let taskItems = selectedTasks.filter { task in
+    var selectedTimelineItems: [DailyTimelineItem] { timelineItems(for: selectedDate) }
+    func timelineItems(for date: Date) -> [DailyTimelineItem] {
+        let eventItems = events(for: date).filter { !$0.isAllDay }.map(DailyTimelineItem.init(event:))
+        let taskItems = tasks(for: date).filter { task in
             guard !task.isAllDay, let date = task.dueDate ?? task.startDate else { return false }
             return !calendar.isDate(date, equalTo: calendar.startOfDay(for: date), toGranularity: .minute)
         }.map(DailyTimelineItem.init(task:))

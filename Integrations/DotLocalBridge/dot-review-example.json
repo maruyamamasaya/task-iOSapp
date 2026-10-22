@@ -1,0 +1,30 @@
+{
+  "bridgeID": "synthetic-review",
+  "scope": "local_mirror_only",
+  "masterSourceUpdated": false,
+  "dotChatConfirmed": false,
+  "requiresDotReview": true,
+  "changes": [
+    {
+      "operation": {
+        "completed": true,
+        "expectedRevision": 1,
+        "operationId": "8c0f70f0-efb0-4e6e-b524-a81230494c88",
+        "taskId": "sample-task"
+      },
+      "macStatus": "applied",
+      "localFileReceiptMatches": true,
+      "currentLocalTask": {
+        "category": "テスト",
+        "completed": true,
+        "date": null,
+        "dateLabel": "未定",
+        "details": "合成データのみ",
+        "id": "sample-task",
+        "revision": 2,
+        "status": "確認待ち",
+        "title": "合成タスク"
+      }
+    }
+  ]
+}

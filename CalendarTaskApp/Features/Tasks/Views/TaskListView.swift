@@ -2,6 +2,8 @@ import SwiftUI
 
 struct TaskListView: View {
     @StateObject var viewModel: TaskListViewModel
+    var dotTaskStore: DotTaskStore? = nil
+    var localRelayFactory: DotLocalRelayFactory? = nil
     @State private var route: EditorRoute?
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.colorScheme) private var colorScheme
@@ -11,6 +13,7 @@ struct TaskListView: View {
             sectionBar
             Divider()
             filterBar
+            if let error = viewModel.operationError { Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal) }
             if viewModel.visibleTasks.isEmpty {
                 ContentUnavailableView(viewModel.emptyMessage, systemImage: "checklist").foregroundStyle(.secondary).frame(maxHeight: .infinity)
             } else {
@@ -31,6 +34,21 @@ struct TaskListView: View {
         }
         .themedScreen()
         .navigationTitle("タスク")
+        .toolbar {
+            if let localRelayFactory {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { DotLocalRelayEntryView(factory: localRelayFactory) }
+                        label: { Label("Mac 中継", systemImage: "desktopcomputer") }
+                }
+            }
+            if let dotTaskStore {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        DotTaskListView(viewModel: DotTaskListViewModel(store: dotTaskStore))
+                    } label: { Label("タスクの読み込み", systemImage: "sparkles") }
+                }
+            }
+        }
         .searchable(text: $viewModel.searchText, prompt: "タイトル・メモを検索")
         .task { await viewModel.load() }
         .sheet(item: $route) { route in

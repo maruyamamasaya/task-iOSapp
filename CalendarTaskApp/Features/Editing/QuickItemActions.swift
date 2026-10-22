@@ -63,7 +63,6 @@ struct TaskQuickActionsModifier: ViewModifier {
                     Button(action: moveTomorrow) { Label("明日へ送る", systemImage: "sunrise") }
                     Button { showsDatePicker = true } label: { Label("日付変更", systemImage: "calendar") }
                 }
-                Button(action: duplicate) { Label("複製", systemImage: "plus.square.on.square") }
                 if !projects.isEmpty {
                     Menu("プロジェクト") {
                         Button("なし") { assignProject(nil) }

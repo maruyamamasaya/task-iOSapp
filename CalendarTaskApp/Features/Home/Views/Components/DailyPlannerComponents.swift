@@ -64,21 +64,34 @@ struct DailyTimelineView: View {
     let taskActions: TaskRowActions
     let eventActions: EventRowActions
 
+    var add: (() -> Void)? = nil
+
+    private var visibleItems: [DailyTimelineItem] {
+        items.filter { DailyTimelineItem.isWithinDisplayHours($0.date) }
+    }
+
+    private var showsVisibleNow: Bool {
+        showsNow && DailyTimelineItem.isWithinDisplayHours(now)
+    }
+
     var body: some View {
         PlannerSection(title: "1日の流れ", symbol: "clock") {
-            if items.isEmpty { PlannerEmptyText(text: "時間の決まった項目はありません") }
-            if showsNow, shouldShowNowBeforeFirst { CurrentTimeRow(now: now) }
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            if visibleItems.isEmpty { PlannerEmptyText(text: "時間の決まった項目はありません") }
+            if showsVisibleNow, shouldShowNowBeforeFirst { CurrentTimeRow(now: now) }
+            ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
                 TimelineItemRow(item: item, editEvent: editEvent, editTask: editTask, toggleTask: toggleTask, taskActions: taskActions, eventActions: eventActions)
-                if showsNow && shouldShowNow(after: index) { CurrentTimeRow(now: now) }
+                if showsVisibleNow && shouldShowNow(after: index) { CurrentTimeRow(now: now) }
             }
-            if showsNow && items.isEmpty { CurrentTimeRow(now: now) }
+            if showsVisibleNow && visibleItems.isEmpty { CurrentTimeRow(now: now) }
+            if let add {
+                PlannerAddButton(title: "予定", action: add)
+            }
         }
     }
-    private var shouldShowNowBeforeFirst: Bool { guard let first = items.first else { return false }; return now < first.date }
+    private var shouldShowNowBeforeFirst: Bool { guard let first = visibleItems.first else { return false }; return now < first.date }
     private func shouldShowNow(after index: Int) -> Bool {
-        guard !shouldShowNowBeforeFirst, now >= items[index].date else { return false }
-        return index == items.count - 1 || now < items[index + 1].date
+        guard !shouldShowNowBeforeFirst, now >= visibleItems[index].date else { return false }
+        return index == visibleItems.count - 1 || now < visibleItems[index + 1].date
     }
 }
 
@@ -100,10 +113,8 @@ struct TimelineItemRow: View {
                 Button { editEvent(event) } label: { itemText(symbol: "calendar") }.buttonStyle(ThemedPressStyle())
                     .modifier(EventQuickActionsModifier(event: event, edit: { eventActions.edit(event) }, reschedule: { eventActions.reschedule(event, $0) }, duplicate: { eventActions.duplicate(event) }, delete: { eventActions.delete(event) }))
             case let .task(task):
-                HStack(alignment: .top, spacing: 9) {
-                    Button { toggleTask(task) } label: { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle()).accessibilityLabel(task.isCompleted ? "\(task.title)を未完了に戻す" : "\(task.title)を完了")
-                    Button { editTask(task) } label: { itemText(symbol: nil) }.buttonStyle(ThemedPressStyle())
-                }
+                Button { editTask(task) } label: { itemText(symbol: nil) }
+                    .buttonStyle(ThemedPressStyle())
                 .modifier(TaskQuickActionsModifier(task: task, usesCustomSwipe: true, edit: { taskActions.edit(task) }, toggle: { taskActions.toggle(task) }, moveToday: { taskActions.moveToday(task) }, moveTomorrow: { taskActions.moveTomorrow(task) }, reschedule: { taskActions.reschedule(task, $0) }, duplicate: { taskActions.duplicate(task) }, assignProject: { _ in }, delete: { taskActions.delete(task) }))
             }
         }.frame(minHeight: 52, alignment: .top)
@@ -112,13 +123,20 @@ struct TimelineItemRow: View {
         HStack(alignment: .top, spacing: 8) {
             if let symbol { Image(systemName: symbol).font(.caption).foregroundStyle(.secondary) }
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title).strikethrough(item.isCompleted).foregroundStyle(item.isCompleted ? .secondary : .primary)
+                Text(displayTitle).font(.body.weight(.medium)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).strikethrough(item.isCompleted).foregroundStyle(item.isCompleted ? .secondary : .primary)
                 if isRecurring { Image(systemName: "repeat").font(.caption2).foregroundStyle(.secondary) }
                 if let name = projectName { Text(name).font(.caption2).foregroundStyle(.secondary) }
-                if !item.note.isEmpty { Text(item.note).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                if !displayNote.isEmpty { Text(displayNote).font(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading) }
+                if let status = taskPresentation?.syncNotice { PlannerSyncNotice(text: status) }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
+    private var taskPresentation: PlannerTaskPresentation? {
+        if case let .task(task) = item.source { return PlannerTaskPresentation(task: task) }
+        return nil
+    }
+    private var displayTitle: String { taskPresentation?.title ?? item.title }
+    private var displayNote: String { taskPresentation?.note ?? item.note }
     private var isRecurring: Bool { switch item.source { case let .task(value): value.recurrenceRule != nil; case let .event(value): value.recurrenceRule != nil } }
     private var projectID: UUID? { switch item.source { case let .task(value): value.projectID; case let .event(value): value.projectID } }
     private var projectName: String? { projectStore.project(id: projectID)?.name }
@@ -142,10 +160,49 @@ struct UnscheduledTasksSection: View {
     let edit: (TaskItem) -> Void
     let toggle: (TaskItem) -> Void
     let actions: TaskRowActions
+    var add: (() -> Void)? = nil
+    @State private var isExpanded = false
     var body: some View {
         PlannerSection(title: "やること", symbol: "checklist") {
-            if tasks.isEmpty { PlannerEmptyText(text: "時間を決めていないタスクはありません") }
-            ForEach(tasks) { task in TaskPlannerRow(task: task, edit: { edit(task) }, toggle: { toggle(task) }, actions: actions) }
+            DisclosureGroup(isExpanded: $isExpanded) {
+                if tasks.isEmpty { PlannerEmptyText(text: "時間を決めていないタスクはありません") }
+                ForEach(tasks) { task in
+                    TaskPlannerRow(task: task, edit: { edit(task) }, toggle: { toggle(task) }, actions: actions)
+                }
+                if let add { PlannerAddButton(title: "やること", action: add) }
+            } label: {
+                Text("\(tasks.count)件")
+                    .font(.subheadline)
+                    .frame(minHeight: 44)
+            }
+            .accessibilityLabel("やること \(tasks.count)件")
+        }
+    }
+}
+
+struct CompletedDayTasksSection: View {
+    let tasks: [TaskItem]
+    let edit: (TaskItem) -> Void
+    let toggle: (TaskItem) -> Void
+    let actions: TaskRowActions
+    @State private var isExpanded = false
+
+    var body: some View {
+        PlannerSection(title: "できたこと", symbol: "checkmark.seal") {
+            if tasks.isEmpty {
+                PlannerEmptyText(text: "完了したやることが、ここに残ります")
+            } else {
+                DisclosureGroup(isExpanded: $isExpanded) {
+                    ForEach(tasks) { task in
+                        TaskPlannerRow(task: task, edit: { edit(task) }, toggle: { toggle(task) }, actions: actions)
+                    }
+                } label: {
+                    Text("できたこと \(tasks.count)件")
+                        .font(.subheadline)
+                        .frame(minHeight: 44)
+                }
+                .accessibilityHint("この日に予定されている完了済みタスクを見返す")
+            }
         }
     }
 }
@@ -153,35 +210,76 @@ struct UnscheduledTasksSection: View {
 private struct TaskPlannerRow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     let task: TaskItem; let edit: () -> Void; let toggle: () -> Void; let actions: TaskRowActions
+    private var presentation: PlannerTaskPresentation { PlannerTaskPresentation(task: task) }
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
-            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.buttonStyle(ThemedPressStyle()).accessibilityLabel(task.isCompleted ? "\(task.title)を未完了に戻す" : "\(task.title)を完了")
+            Button(action: toggle) { Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle").frame(width: 44, height: 44) }.font(.title3).foregroundStyle(task.isCompleted ? Color.secondary : Color.accentColor).buttonStyle(ThemedPressStyle()).accessibilityLabel(task.isCompleted ? "\(task.title)を未完了に戻す" : "\(task.title)を完了")
             Button(action: edit) {
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 7) {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
                         if let project = projectStore.project(id: task.projectID) { Circle().fill(project.colorIdentifier.color).frame(width: 6, height: 6) }
-                        Text(task.title).strikethrough(task.isCompleted).foregroundStyle(task.isCompleted ? .secondary : .primary)
+                        Text(presentation.title).font(.body.weight(.medium)).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).strikethrough(task.isCompleted).foregroundStyle(task.isCompleted ? .secondary : .primary)
+                    }
+                    Label(task.dueDate?.formatted(date: .abbreviated, time: task.isAllDay ? .omitted : .shortened) ?? "期限なし", systemImage: "calendar")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if !task.tags.isEmpty {
+                        Text(task.tags.map { "#" + $0.name }.joined(separator: "  "))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
                     }
                     if task.recurrenceRule != nil { Image(systemName: "repeat").font(.caption2).foregroundStyle(.secondary) }
                     if let project = projectStore.project(id: task.projectID) { Text(project.name).font(.caption2).foregroundStyle(.secondary) }
-                    if !task.note.isEmpty { Text(task.note).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                    if !presentation.note.isEmpty { Text(presentation.note).font(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading) }
+                    if let status = presentation.syncNotice { PlannerSyncNotice(text: status) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(ThemedPressStyle())
-        }
-        .modifier(TaskQuickActionsModifier(task: task, usesCustomSwipe: true, edit: { actions.edit(task) }, toggle: { actions.toggle(task) }, moveToday: { actions.moveToday(task) }, moveTomorrow: { actions.moveTomorrow(task) }, reschedule: { actions.reschedule(task, $0) }, duplicate: { actions.duplicate(task) }, assignProject: { _ in }, delete: { actions.delete(task) }))
+        }.padding(.vertical, 6)
     }
 }
 
-struct DailyNoteSection: View {
-    let text: String; let edit: () -> Void
+struct DailyBriefSection: View {
+    let brief: DailyBrief?
+    let isOutdated: Bool
+    let errorMessage: String?
     var body: some View {
-        PlannerSection(title: "メモ", symbol: "pencil.line") {
-            Button(action: edit) {
-                Text(text.isEmpty ? "メモを書く" : text).font(.subheadline)
-                    .foregroundStyle(text.isEmpty ? .secondary : .primary).lineLimit(5)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
-            }.buttonStyle(ThemedPressStyle())
+        PlannerSection(title: "Dotのひとこと", symbol: "sparkles") {
+            if let brief {
+                HStack {
+                    Text(brief.kind == "reflection" ? "振り返り" : "見通し")
+                    Spacer()
+                    Text(brief.generatedAt, format: .dateTime.month().day().hour().minute())
+                }.font(.caption).foregroundStyle(.secondary)
+                Text(brief.text).font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if isOutdated {
+                    Text("生成後に予定やタスクが変わっています。Dotに更新を頼めます。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Dotのチャットで、この日の見通しや振り返りを頼んでください。")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if let errorMessage {
+                Text(errorMessage).font(.caption).foregroundStyle(.secondary)
+            }
         }
+    }
+}
+
+private struct PlannerAddButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: "plus")
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(ThemedPressStyle())
+        .accessibilityLabel("\(title)を追加")
     }
 }
 
@@ -220,4 +318,37 @@ struct PlannerSection<Content: View>: View {
 private struct PlannerEmptyText: View {
     let text: String
     var body: some View { Text(text).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 5) }
+}
+
+// Presentation only: keep the projected TaskItem and relay payload unchanged.
+struct PlannerTaskPresentation {
+    let title: String
+    let note: String
+    let syncNotice: String?
+    init(task: TaskItem) {
+        let lines = task.note.components(separatedBy: "\n")
+        let notices = [
+            "未送信・端末保存済み": "送信待ち · 端末に保存済み",
+            "Mac受信済み・反映待ち": "Mac受信済み · 反映待ち",
+            "競合・変更保持": "競合 · 変更を保持しています"
+        ]
+        let knownStates = Set(notices.keys).union(["Mac取得済み（Web完了未照合）", "端末内保存済み（Web完了未照合）", "Macローカル反映済み（Web・dot確認は別）"])
+        if lines.count >= 2,
+           lines[0].hasPrefix("dot: "), knownStates.contains(lines[1]) {
+            title = task.title.hasPrefix("[dot] ") ? String(task.title.dropFirst(6)) : task.title
+            note = lines.dropFirst(2).joined(separator: "\n")
+            syncNotice = notices[lines[1]]
+        } else {
+            title = task.title; note = task.note; syncNotice = nil
+        }
+    }
+}
+
+private struct PlannerSyncNotice: View {
+    let text: String
+    var body: some View {
+        Label(text, systemImage: "arrow.triangle.2.circlepath")
+            .font(.caption2).foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
+    }
 }

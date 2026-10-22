@@ -56,3 +56,22 @@ final class CalendarExtensionTests: XCTestCase {
         XCTAssertEqual(calendar.component(.day, from: dates[6]), 22)
     }
 }
+
+final class DailyTimelineDisplayHoursTests: XCTestCase {
+    func testDisplayHoursIncludeEndpointsAndHideOutsideTimes() throws {
+        for zone in ["Asia/Tokyo", "America/Los_Angeles"] {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = try XCTUnwrap(TimeZone(identifier: zone))
+            for (hour, minute, second, expected) in [
+                (0, 0, 0, false), (8, 59, 59, false), (9, 0, 0, true),
+                (12, 0, 0, true), (20, 59, 59, true), (21, 0, 0, true),
+                (21, 0, 1, false), (23, 59, 59, false)
+            ] {
+                let date = try XCTUnwrap(calendar.date(from: DateComponents(
+                    year: 2026, month: 10, day: 22, hour: hour, minute: minute, second: second)))
+                XCTAssertEqual(DailyTimelineItem.isWithinDisplayHours(date, calendar: calendar), expected,
+                               "\(zone) \(hour):\(minute):\(second)")
+            }
+        }
+    }
+}

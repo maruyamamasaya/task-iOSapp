@@ -12,11 +12,13 @@ struct CalendarDayCell: View {
     let hasIncompleteTask: Bool
     let projectColors: [Color]
     let select: () -> Void
+    var showsItemIndicator = true
+    var centersDayNumber = false
 
     var body: some View {
         Button(action: select) {
-            VStack(spacing: 4) {
-                Text(date, format: .dateTime.day())
+            VStack(alignment: centersDayNumber ? .center : .leading, spacing: 4) {
+                Text(String(Calendar.current.component(.day, from: date)))
                     .font(.system(.subheadline, design: settings.theme.headingDesign,
                                   weight: isToday || isSelected ? .bold : .regular))
                     .monospacedDigit()
@@ -32,30 +34,22 @@ struct CalendarDayCell: View {
                                 .frame(width: 12, height: 2).padding(.bottom, 3)
                         }
                     }
-                HStack(spacing: 4) {
-                    Circle().fill(hasEvent ? palette.ink : .clear).frame(width: 5, height: 5)
-                    RoundedRectangle(cornerRadius: 1)
-                        .stroke(hasIncompleteTask ? palette.ink : .clear, lineWidth: 1.3)
+                if showsItemIndicator {
+                    Circle()
+                        .fill(hasEvent || hasIncompleteTask ? palette.ink : .clear)
                         .frame(width: 5, height: 5)
-                }.frame(height: 6)
-                HStack(spacing: 3) {
-                    ForEach(Array(projectColors.prefix(3).enumerated()), id: \.offset) { _, color in
-                        indicator(visible: true, color: color)
-                    }
-                }.frame(height: 4)
+                        .padding(.leading, centersDayNumber ? 0 : 13)
+                }
             }
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity, minHeight: 60)
+            .padding(.top, 3)
+            .padding(.leading, centersDayNumber ? 0 : 2)
+            .frame(maxWidth: .infinity, minHeight: showsItemIndicator ? 60 : 36, alignment: centersDayNumber ? .top : .topLeading)
             .contentShape(Rectangle())
         }
         .buttonStyle(ThemedPressStyle())
         .accessibilityLabel(date.formatted(date: .complete, time: .omitted))
         .accessibilityValue([isToday ? "今日" : nil, isHoliday ? "祝日" : nil, hasEvent ? "予定あり" : nil, hasIncompleteTask ? "未完了タスクあり" : nil].compactMap { $0 }.joined(separator: "、"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private func indicator(visible: Bool, color: Color) -> some View {
-        Circle().fill(visible ? color : .clear).frame(width: 4, height: 4)
     }
 
     private var isHoliday: Bool { Calendar.current.isJapaneseHoliday(date) }

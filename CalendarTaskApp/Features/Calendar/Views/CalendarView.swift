@@ -28,10 +28,10 @@ struct CalendarView: View {
                                            editNote: { editorRoute = .note(viewModel.selectedNote, viewModel.selectedDate) })
                         .themedSurface()
                 } else if viewModel.displayMode == .week {
-                    WeekCalendarView(dates: viewModel.weekDates, selectedDate: viewModel.selectedDate,
-                                     allDayEvents: viewModel.selectedAllDayEvents, allDayTasks: viewModel.selectedAllDayTasks,
-                                     timelineItems: viewModel.selectedTimelineItems, unscheduledTasks: viewModel.selectedUnscheduledTasks, now: viewModel.now,
-                                     isToday: viewModel.isToday, isSelected: viewModel.isSelected, hasEvent: viewModel.hasEvents, hasTask: viewModel.hasIncompleteTasks,
+                    WeekCalendarView(dates: viewModel.weekDates,
+                                     events: viewModel.events, tasks: viewModel.tasks, timelineItems: viewModel.timelineItems,
+                                     isToday: viewModel.isToday, isSelected: viewModel.isSelected,
+                                     hasEvent: viewModel.hasEvents, hasTask: viewModel.hasIncompleteTasks,
                                      projectIDs: viewModel.projectIDs, select: { date in Task { await viewModel.select(date) } },
                                      taskActions: taskActions, eventActions: eventActions)
                 } else {

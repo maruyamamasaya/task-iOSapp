@@ -4,6 +4,7 @@ import Combine
 @MainActor final class TaskStore: ObservableObject {
     @Published private(set) var tasks: [TaskItem] = []
     @Published private(set) var errorMessage: String?
+    private var loadGeneration = 0
     private let repository: any TaskRepository
     private let notificationService: any NotificationService
     private let widgetRefreshService: any WidgetRefreshService
@@ -11,15 +12,20 @@ import Combine
         self.repository = repository; self.notificationService = notificationService; self.widgetRefreshService = widgetRefreshService
     }
     func load() async {
-        do { tasks = try await repository.fetchTasks(); errorMessage = nil }
-        catch { errorMessage = error.localizedDescription }
+        loadGeneration += 1
+        let generation = loadGeneration
+        do {
+            let fetched = try await repository.fetchTasks()
+            guard generation == loadGeneration else { return }
+            tasks = fetched; errorMessage = nil
+        } catch { if generation == loadGeneration { errorMessage = error.localizedDescription } }
     }
     @discardableResult func add(_ task: TaskItem) async -> Bool {
         do { try await repository.addTask(task); await notificationService.sync(task: task); widgetRefreshService.reloadTodayWidgets(); await load(); return true }
         catch { errorMessage = error.localizedDescription; return false }
     }
     @discardableResult func update(_ task: TaskItem) async -> Bool {
-        do { try await repository.updateTask(task); await notificationService.sync(task: task); widgetRefreshService.reloadTodayWidgets(); await load(); return true }
+        do { try await repository.updateTask(task); await load(); await notificationService.sync(task: task); widgetRefreshService.reloadTodayWidgets(); return true }
         catch { errorMessage = error.localizedDescription; return false }
     }
     func delete(id: UUID) async {

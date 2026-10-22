@@ -14,13 +14,29 @@ struct AppRootView: View {
     }
     var body: some View {
         TabView(selection: $selectedRoute) {
-            NavigationStack { HomeView(viewModel: HomeViewModel(taskStore: dependencies.taskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
+            NavigationStack { HomeView(briefStore: dependencies.dailyBriefStore, viewModel: HomeViewModel(taskStore: dependencies.plannerTaskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
                 .tabItem { Label("今日", systemImage: "book.pages") }
                 .tag(AppRoute.today)
-            NavigationStack { CalendarView(viewModel: CalendarViewModel(taskStore: dependencies.taskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
+            NavigationStack { CalendarView(viewModel: CalendarViewModel(taskStore: dependencies.plannerTaskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
                 .tabItem { Label("カレンダー", systemImage: "calendar") }
                 .tag(AppRoute.calendar)
-            NavigationStack { TaskListView(viewModel: TaskListViewModel(store: dependencies.taskStore, completionStore: dependencies.taskCompletionStore, projectStore: dependencies.projectStore, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
+            NavigationStack {
+                DotPlannerListView(viewModel: makeDotListModel())
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                if let store = dependencies.dotTaskStore {
+                                    NavigationLink("JSON を読み込む・更新") {
+                                        DotTaskListView(viewModel: DotTaskListViewModel(store: store))
+                                    }
+                                }
+                                NavigationLink("Mac 中継") {
+                                    DotLocalRelayEntryView(factory: dependencies.dotLocalRelayFactory)
+                                }
+                            } label: { Label("その他", systemImage: "ellipsis.circle") }
+                        }
+                    }
+            }
                 .tabItem { Label("タスク", systemImage: "checklist") }
                 .tag(AppRoute.tasks)
             NavigationStack { SettingsView(viewModel: SettingsViewModel(store: dependencies.settingsStore, notificationService: dependencies.notificationService), backupService: dependencies.backupService) }
@@ -33,9 +49,21 @@ struct AppRootView: View {
         .tint(settings.theme.accent)
         .preferredColorScheme(colorScheme)
         .task {
+            await dependencies.runApprovedOverdueMove()
             await dependencies.projectStore.load()
             await dependencies.tagStore.load()
             await dependencies.rescheduleNotificationsIfAuthorized()
+        }
+        .task(id: scenePhase) {
+            await dependencies.relayActivity(scenePhase == .active)
+            guard scenePhase == .active else { return }
+            // Retrying also detects LAN recovery without treating path availability as server reachability.
+            while !Task.isCancelled {
+                await dependencies.retryRelay()
+                await dependencies.plannerTaskStore.load()
+                await dependencies.taskStore.load()
+                do { try await Task.sleep(for: .seconds(15)) } catch { break }
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
@@ -45,6 +73,14 @@ struct AppRootView: View {
             guard url.scheme?.lowercased() == "calendartaskapp" else { return }
             switch url.host?.lowercased() { case "today": selectedRoute = .today; case "calendar": selectedRoute = .calendar; case "tasks": selectedRoute = .tasks; default: break }
         }
+    }
+    private func makeDotListModel() -> TaskListViewModel {
+        let model = TaskListViewModel(store: dependencies.plannerTaskStore, completionStore: dependencies.taskCompletionStore,
+                                      projectStore: dependencies.projectStore, settingsStore: dependencies.settingsStore,
+                                      hapticService: dependencies.hapticService, dateProvider: dependencies.dateProvider,
+                                      metadataSource: dependencies.plannerTaskMetadata)
+        model.selectedSection = .week
+        return model
     }
     private var colorScheme: ColorScheme? { switch settings.appearance { case .system: nil; case .light: .light; case .dark: .dark } }
     static func route(for tab: InitialAppTab) -> AppRoute { switch tab { case .today: .today; case .calendar: .calendar; case .tasks: .tasks } }

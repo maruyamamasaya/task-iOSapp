@@ -14,6 +14,6 @@
 
 - Living Aurora を参考にしたモダンのダーク配色・背景と、ミッドナイトの星空増強を実機向け Debug ビルド。
 - アプリと同梱 Widget のビルド成功、codesign --verify --deep --strict 成功。
-- 既存アプリのある Vespera（iPhone 17e）に上書き導入成功。devicectl の起動コマンド成功。
+- 既存アプリのある 確認用iPhoneに上書き導入成功。devicectl の起動コマンド成功。
 - 実機での外観の目視確認、アプリ内操作、既存データの照合は未実施。
 - unit test は実行していない。テスト端末の作成・削除は各0台。XCTestDevices の残容量は3.5G。

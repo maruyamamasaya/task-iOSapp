@@ -31,10 +31,6 @@ struct TaskSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
     var body: some View { Form { Group {
 
-        Section("新規タスク") {
-            Picker("優先度", selection: $settings.defaultTaskPriority) { ForEach(TaskPriority.allCases, id: \.self) { Text($0.displayName).tag($0) } }
-            Toggle("終日として作成", isOn: $settings.newTasksAreAllDay)
-        }
         Section("一覧") {
             Toggle("完了タスクを下へ移動", isOn: $settings.completedTasksAtBottom)
             Picker("並び替え", selection: $settings.defaultTaskSort) { ForEach(SettingsTaskSort.allCases) { Text($0.rawValue).tag($0) } }
@@ -60,7 +56,7 @@ struct QuickAddSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
     var body: some View { Form { Group {
 
-        Section("入力") { Picker("デフォルト種類", selection: $settings.quickAddDefaultType) { ForEach(QuickAddDefaultType.allCases) { Text($0.rawValue).tag($0) } } }
+        Section("入力") { Text("予定とメモを追加できます。タスクの追加は dot で行います。") }
         Section("解析後") {
             Toggle("解析後すぐ保存", isOn: $settings.quickAddSaveImmediately)
             Toggle("解析結果を必ず確認", isOn: $settings.quickAddAlwaysPreview)

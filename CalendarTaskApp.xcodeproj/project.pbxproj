@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        D07100000000000000000001 /* DotWidgetTaskCache.swift app */ = {isa = PBXBuildFile; fileRef = D07100000000000000000003; };
+        D07100000000000000000002 /* DotWidgetTaskCache.swift widget */ = {isa = PBXBuildFile; fileRef = D07100000000000000000003; };
+        D07100000000000000000004 /* WidgetDataProvider.swift app */ = {isa = PBXBuildFile; fileRef = AD0000000000000000000002; };
 		04D8EEC27FAF07E40873A075 /* CalendarTaskApp/Features/Calendar/Views/CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24475000724E4CC45EEDBBE1 /* CalendarTaskApp/Features/Calendar/Views/CalendarView.swift */; };
 		08BDB18A1B0A0E058113B78C /* CalendarTaskApp/Core/Models/AppTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494B922EABE25535CB67A79F /* CalendarTaskApp/Core/Models/AppTag.swift */; };
 		17A4D25558FE66C26A19BDFF /* CalendarTaskApp/Core/Extensions/Calendar+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A943452917DE7B9C9856CFA2 /* CalendarTaskApp/Core/Extensions/Calendar+Extensions.swift */; };
@@ -101,6 +104,19 @@
 		F9D26892212B0ACD88B0F9F9 /* CalendarTaskApp/Core/Extensions/Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA38980B1ACF52FC0F083A6 /* CalendarTaskApp/Core/Extensions/Date+Extensions.swift */; };
 		FAAF32A24872DFFC613492EF /* CalendarTaskApp/Data/Mock/SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3B83AD9C68F9C52130A543 /* CalendarTaskApp/Data/Mock/SampleData.swift */; };
 		FD1AE6E61D07643969A8A6D3 /* CalendarTaskApp/Features/Calendar/Views/Components/DailyScheduleList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186D83A791AC5C83EDC3434E /* CalendarTaskApp/Features/Calendar/Views/Components/DailyScheduleList.swift */; };
+		50AE5B8B59EDF39A8BB911FF /* CalendarTaskApp/Core/Repositories/DotTaskRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ECD3E18E20AA07784922E7F; };
+		BAA81098861D7F1EB280AD94 /* CalendarTaskApp/Core/Stores/DotTaskStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BC55B61818BCB4CF4DE6842; };
+		FF362C183FD093893433A977 /* CalendarTaskApp/Data/Remote/DotTaskFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9461C087313BA44CC10A63; };
+		189B6BA59E238DBCA9989B6A /* CalendarTaskApp/Data/Local/DotTaskFileCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF7230629AC5DE6C93D01844; };
+		9DE6A591DB4A2C4FDAA1F419 /* CalendarTaskApp/Features/DotTasks/DotTaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D916639C919DA18A528D4B; };
+		1BCF1FBBFC26FFDDF58F660E /* CalendarTaskAppTests/DotTaskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952CC56DBDBAF0C6A01EF0AE; };
+		743AE0D2FB48241B3398E651 /* CalendarTaskApp/Data/Remote/DotTaskHTTPSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6C7386EE7A17DDF42EC456; };
+		8311A33D2D2687EE748B8693 /* CalendarTaskAppTests/DotTaskHTTPSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D91DA47020FFD2A238590C; };
+		D07A00000000000000000001 /* DotLocalBridge in Frameworks */ = {isa = PBXBuildFile; productRef = D07A00000000000000000002 /* DotLocalBridge */; };
+		D07A00000000000000000003 /* DotLocalRelayComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07A00000000000000000004 /* DotLocalRelayComposition.swift */; };
+		438ECE5958D5DE78C6630BE2 /* CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8041799036592E16A1CD8E77 /* CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift */; };
+		5EE379C0CAE6D41D740690E0 /* CalendarTaskApp/Core/Stores/DailyBriefStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B561BCF55A92625625A0BB0 /* CalendarTaskApp/Core/Stores/DailyBriefStore.swift */; };
+		E410DD21E90641CD4769BAF4 /* CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B192B2C1066DEB1DD12452 /* CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -135,6 +151,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+        D07100000000000000000003 /* DotWidgetTaskCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Local/DotWidgetTaskCache.swift; sourceTree = SOURCE_ROOT; };
 		09513DC433006C9C7C3B019E /* CalendarTaskApp/Features/Calendar/Views/Components/CalendarDayCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Calendar/Views/Components/CalendarDayCell.swift; sourceTree = SOURCE_ROOT; };
 		146299B07B2E217266EBCF95 /* CalendarTaskApp/Features/Calendar/Views/DayCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Calendar/Views/DayCalendarView.swift; sourceTree = SOURCE_ROOT; };
 		1627818DE1E775BAC7631E5A /* CalendarTaskApp/Core/Stores/CalendarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Stores/CalendarStore.swift; sourceTree = SOURCE_ROOT; };
@@ -220,6 +237,18 @@
 		DF3E0883FEA4750B26E64E7A /* CalendarTaskApp/Core/Stores/SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Stores/SettingsStore.swift; sourceTree = SOURCE_ROOT; };
 		E8357947447D03F326C02C77 /* CalendarTaskApp/Core/Models/TaskPriority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Models/TaskPriority.swift; sourceTree = SOURCE_ROOT; };
 		EA801423E3C098183642722D /* CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift; sourceTree = SOURCE_ROOT; };
+		7ECD3E18E20AA07784922E7F /* CalendarTaskApp/Core/Repositories/DotTaskRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Repositories/DotTaskRepository.swift; sourceTree = SOURCE_ROOT; };
+		1BC55B61818BCB4CF4DE6842 /* CalendarTaskApp/Core/Stores/DotTaskStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Stores/DotTaskStore.swift; sourceTree = SOURCE_ROOT; };
+		DF9461C087313BA44CC10A63 /* CalendarTaskApp/Data/Remote/DotTaskFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Remote/DotTaskFeed.swift; sourceTree = SOURCE_ROOT; };
+		CF7230629AC5DE6C93D01844 /* CalendarTaskApp/Data/Local/DotTaskFileCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Local/DotTaskFileCache.swift; sourceTree = SOURCE_ROOT; };
+		78D916639C919DA18A528D4B /* CalendarTaskApp/Features/DotTasks/DotTaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/DotTasks/DotTaskListView.swift; sourceTree = SOURCE_ROOT; };
+		952CC56DBDBAF0C6A01EF0AE /* CalendarTaskAppTests/DotTaskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/DotTaskTests.swift; sourceTree = SOURCE_ROOT; };
+		3D6C7386EE7A17DDF42EC456 /* CalendarTaskApp/Data/Remote/DotTaskHTTPSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Remote/DotTaskHTTPSource.swift; sourceTree = SOURCE_ROOT; };
+		96D91DA47020FFD2A238590C /* CalendarTaskAppTests/DotTaskHTTPSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/DotTaskHTTPSourceTests.swift; sourceTree = SOURCE_ROOT; };
+		D07A00000000000000000004 /* DotLocalRelayComposition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/App/DotLocalRelayComposition.swift; sourceTree = SOURCE_ROOT; };
+		8041799036592E16A1CD8E77 /* CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift; sourceTree = SOURCE_ROOT; };
+		7B561BCF55A92625625A0BB0 /* CalendarTaskApp/Core/Stores/DailyBriefStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Stores/DailyBriefStore.swift; sourceTree = SOURCE_ROOT; };
+		20B192B2C1066DEB1DD12452 /* CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -227,6 +256,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D07A00000000000000000001 /* DotLocalBridge in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,6 +280,15 @@
 		EDA6D6223944636B9C5B54AA = {
 			isa = PBXGroup;
 			children = (
+				D07A00000000000000000004 /* DotLocalRelayComposition.swift */,
+				96D91DA47020FFD2A238590C /* CalendarTaskAppTests/DotTaskHTTPSourceTests.swift */,
+				3D6C7386EE7A17DDF42EC456 /* CalendarTaskApp/Data/Remote/DotTaskHTTPSource.swift */,
+				952CC56DBDBAF0C6A01EF0AE /* CalendarTaskAppTests/DotTaskTests.swift */,
+				78D916639C919DA18A528D4B /* CalendarTaskApp/Features/DotTasks/DotTaskListView.swift */,
+				CF7230629AC5DE6C93D01844 /* CalendarTaskApp/Data/Local/DotTaskFileCache.swift */,
+				DF9461C087313BA44CC10A63 /* CalendarTaskApp/Data/Remote/DotTaskFeed.swift */,
+				1BC55B61818BCB4CF4DE6842 /* CalendarTaskApp/Core/Stores/DotTaskStore.swift */,
+				7ECD3E18E20AA07784922E7F /* CalendarTaskApp/Core/Repositories/DotTaskRepository.swift */,
 				7F75C43EA68FD7459621598B /* CalendarTaskApp/App/AppDependencies.swift */,
 				6D3CABDF0E37900A2D5B9D82 /* CalendarTaskApp/App/AppRootView.swift */,
 				8BB8F6818E2876E6A42FB3B0 /* CalendarTaskApp/App/CalendarTaskApp.swift */,
@@ -278,6 +317,9 @@
 				146299B07B2E217266EBCF95 /* CalendarTaskApp/Features/Calendar/Views/DayCalendarView.swift */,
 				49CF2EBA3536046EC015879B /* CalendarTaskApp/Features/Calendar/Views/MonthCalendarView.swift */,
 				884477E9C88D62F509CDDD0B /* CalendarTaskApp/Features/Calendar/Views/WeekCalendarView.swift */,
+				8041799036592E16A1CD8E77 /* CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift */,
+				7B561BCF55A92625625A0BB0 /* CalendarTaskApp/Core/Stores/DailyBriefStore.swift */,
+				20B192B2C1066DEB1DD12452 /* CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift */,
 				90C3A924BE1CF544654C2C24 /* CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift */,
 				EA801423E3C098183642722D /* CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift */,
 				9BC0DA443DA4C9393AF24426 /* CalendarTaskApp/Features/Home/Views/HomeView.swift */,
@@ -308,6 +350,7 @@
 				AB0000000000000000000017 /* CalendarTaskApp/Core/Stores/TaskCompletionStore.swift */,
 				AB0000000000000000000018 /* CalendarTaskAppTests/RecurrenceCalculatorTests.swift */,
 				AB0000000000000000000019 /* CalendarTaskApp/Core/Services/WidgetRefreshService.swift */,
+                D07100000000000000000003 /* DotWidgetTaskCache.swift */,
 				AB0000000000000000000020 /* CalendarTaskApp/Core/Services/WidgetTaskActionService.swift */,
 				AB0000000000000000000021 /* CalendarTaskAppTests/WidgetTaskActionServiceTests.swift */,
 				AB0000000000000000000022 /* CalendarTaskApp/Core/Models/Project.swift */,
@@ -381,6 +424,7 @@
 				AE0000000000000000000005 /* PBXTargetDependency */,
 			);
 			name = CalendarTaskApp;
+			packageProductDependencies = (D07A00000000000000000002 /* DotLocalBridge */);
 			productName = CalendarTaskApp;
 			productReference = A6E83CBB3BA467BFCA77A293 /* CalendarTaskApp.app */;
 			productType = "com.apple.product-type.application";
@@ -432,6 +476,7 @@
 				Base,
 			);
 			mainGroup = EDA6D6223944636B9C5B54AA;
+			packageReferences = (D07A00000000000000000005 /* XCLocalSwiftPackageReference "Integrations/DotLocalBridge" */);
 			productRefGroup = FBDC4F23F93125BBEEAE800C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -459,6 +504,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D07A00000000000000000003 /* DotLocalRelayComposition.swift in Sources */,
+				743AE0D2FB48241B3398E651 /* CalendarTaskApp/Data/Remote/DotTaskHTTPSource.swift in Sources */,
+				9DE6A591DB4A2C4FDAA1F419 /* CalendarTaskApp/Features/DotTasks/DotTaskListView.swift in Sources */,
+				189B6BA59E238DBCA9989B6A /* CalendarTaskApp/Data/Local/DotTaskFileCache.swift in Sources */,
+				FF362C183FD093893433A977 /* CalendarTaskApp/Data/Remote/DotTaskFeed.swift in Sources */,
+				BAA81098861D7F1EB280AD94 /* CalendarTaskApp/Core/Stores/DotTaskStore.swift in Sources */,
+				50AE5B8B59EDF39A8BB911FF /* CalendarTaskApp/Core/Repositories/DotTaskRepository.swift in Sources */,
 				3C5896BA19A39AE51942251B /* CalendarTaskApp/App/AppDependencies.swift in Sources */,
 				1E646BDBF1D9A53A0F95AE52 /* CalendarTaskApp/App/AppRootView.swift in Sources */,
 				31DEABE3D39D2824F2CF525A /* CalendarTaskApp/App/CalendarTaskApp.swift in Sources */,
@@ -487,6 +539,9 @@
 				1B932734B8C8A9B7F5A5D569 /* CalendarTaskApp/Features/Calendar/Views/DayCalendarView.swift in Sources */,
 				3D72AABAC0CB7C8AA7A4A44B /* CalendarTaskApp/Features/Calendar/Views/MonthCalendarView.swift in Sources */,
 				19B7192A00638C0876BAAD84 /* CalendarTaskApp/Features/Calendar/Views/WeekCalendarView.swift in Sources */,
+				438ECE5958D5DE78C6630BE2 /* CalendarTaskApp/Core/Repositories/DailyBriefRepository.swift in Sources */,
+				5EE379C0CAE6D41D740690E0 /* CalendarTaskApp/Core/Stores/DailyBriefStore.swift in Sources */,
+				E410DD21E90641CD4769BAF4 /* CalendarTaskApp/Data/Remote/DotDailyBriefRepository.swift in Sources */,
 				44747510E210A8684F9894FB /* CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift in Sources */,
 				966E3ABDE8D9F5DB8684DA79 /* CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift in Sources */,
 				39B413FDA29E5B4DC0776DD1 /* CalendarTaskApp/Features/Home/Views/HomeView.swift in Sources */,
@@ -511,6 +566,8 @@
 				AA0000000000000000000016 /* CalendarTaskApp/Core/Repositories/TaskCompletionRepository.swift in Sources */,
 				AA0000000000000000000017 /* CalendarTaskApp/Core/Stores/TaskCompletionStore.swift in Sources */,
 				AA0000000000000000000019 /* CalendarTaskApp/Core/Services/WidgetRefreshService.swift in Sources */,
+                D07100000000000000000001 /* DotWidgetTaskCache.swift app */,
+                D07100000000000000000004 /* WidgetDataProvider.swift app */,
 				AA0000000000000000000020 /* CalendarTaskApp/Core/Services/WidgetTaskActionService.swift in Sources */,
 				AA0000000000000000000022 /* CalendarTaskApp/Core/Models/Project.swift in Sources */,
 				AA0000000000000000000023 /* CalendarTaskApp/Core/Repositories/ProjectRepository.swift in Sources */,
@@ -530,6 +587,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8311A33D2D2687EE748B8693 /* CalendarTaskAppTests/DotTaskHTTPSourceTests.swift in Sources */,
+				1BCF1FBBFC26FFDDF58F660E /* CalendarTaskAppTests/DotTaskTests.swift in Sources */,
 				73C575396FAFCD30D614303E /* CalendarTaskAppTests/CalendarExtensionTests.swift in Sources */,
 				5C8323C983FC30DC75728540 /* CalendarTaskAppTests/InMemoryTaskRepositoryTests.swift in Sources */,
 				AA0000000000000000000011 /* CalendarTaskAppTests/QuickAddParserTests.swift in Sources */,
@@ -549,6 +608,7 @@
 			files = (
 				AC0000000000000000000001 /* CalendarTaskWidget/CalendarTaskWidget.swift in Sources */,
 				AC0000000000000000000002 /* CalendarTaskWidget/WidgetDataProvider.swift in Sources */,
+                D07100000000000000000002 /* DotWidgetTaskCache.swift widget */,
 				AC0000000000000000000003 /* CalendarTaskApp/Data/Local/SwiftDataPersistence.swift in Sources */,
 				AC0000000000000000000004 /* CalendarTaskApp/Core/Models/TaskItem.swift in Sources */,
 				AC0000000000000000000005 /* CalendarTaskApp/Core/Models/CalendarEvent.swift in Sources */,
@@ -582,6 +642,14 @@
 			targetProxy = D799BAE6088A90139B415FCC /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D07A00000000000000000005 /* XCLocalSwiftPackageReference "Integrations/DotLocalBridge" */ = {isa = XCLocalSwiftPackageReference; relativePath = Integrations/DotLocalBridge; };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D07A00000000000000000002 /* DotLocalBridge */ = {isa = XCSwiftPackageProductDependency; productName = DotLocalBridge; };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		01F561AC4AB15D6A23A57976 /* Release */ = {

@@ -29,12 +29,8 @@ struct AddItemMenu: View {
     let date: Date
     @Binding var route: EditorRoute?
     var body: some View {
-        Menu {
-            ForEach(AddItemType.allCases, id: \.self) { type in
-                Button { route = .new(type, date) } label: { Label(type.rawValue, systemImage: type.symbol) }
-            }
-        } label: { Image(systemName: "plus") }
-        .accessibilityLabel("手帳に追加")
+        Button { route = .new(.event, date) } label: { Image(systemName: "plus") }
+        .accessibilityLabel("予定を追加")
     }
 }
 
@@ -79,6 +75,7 @@ private struct EditorScaffold<Content: View>: View {
     let save: () async -> Bool
     let delete: ((UUID) async -> Void)?
     let hasUnsavedChanges: Bool
+    var isReadOnly = false
     @ViewBuilder let content: Content
     @State private var confirmsDeletion = false
     @State private var showsSaveError = false
@@ -102,8 +99,10 @@ private struct EditorScaffold<Content: View>: View {
             .themedScreen()
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { if hasUnsavedChanges { confirmsCancellation = true } else { dismiss() } } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { Task { if await save() { dismiss() } else { showsSaveError = true } } }.disabled(!canSave) }
+                ToolbarItem(placement: .cancellationAction) { Button(isReadOnly ? "閉じる" : "キャンセル") { if hasUnsavedChanges { confirmsCancellation = true } else { dismiss() } } }
+                if !isReadOnly {
+                    ToolbarItem(placement: .confirmationAction) { Button("保存") { Task { if await save() { dismiss() } else { showsSaveError = true } } }.disabled(!canSave) }
+                }
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("完了") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } }
             }
             .alert("保存できませんでした", isPresented: $showsSaveError) { Button("OK", role: .cancel) {} } message: { Text("入力内容は保持されています。もう一度お試しください。") }
@@ -117,84 +116,127 @@ private struct EditorScaffold<Content: View>: View {
 }
 
 struct TaskFormView: View {
-    @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var tagStore: TagStore
     @EnvironmentObject private var settings: SettingsStore
     let original: TaskItem?
+    let defaultDate: Date
     let isCreating: Bool
     let onSave: (TaskItem) async -> Bool
     let onDelete: (UUID) async -> Void
-    @State private var title: String; @State private var date: Date; @State private var isAllDay: Bool
-    @State private var note: String; @State private var priority: TaskPriority
+    @State private var title: String
+    @State private var note: String
     @State private var reminderDate: Date?
-    @State private var recurrenceOption: RecurrenceOption
-    @State private var projectID: UUID?
     @State private var selectedTagIDs: Set<UUID>
     @FocusState private var titleFocused: Bool
-    @State private var appliedDefaults = false
 
     init(item: TaskItem?, defaultDate: Date, isCreating: Bool? = nil, onSave: @escaping (TaskItem) async -> Bool, onDelete: @escaping (UUID) async -> Void) {
-        original = item; self.isCreating = isCreating ?? (item == nil); self.onSave = onSave; self.onDelete = onDelete
-        _title = State(initialValue: item?.title ?? ""); _date = State(initialValue: item?.dueDate ?? defaultDate)
-        _isAllDay = State(initialValue: item?.isAllDay ?? true); _note = State(initialValue: item?.note ?? "")
-        _priority = State(initialValue: item?.priority ?? .normal)
+        original = item; self.defaultDate = defaultDate
+        self.isCreating = isCreating ?? (item == nil); self.onSave = onSave; self.onDelete = onDelete
+        _title = State(initialValue: item.map { PlannerTaskPresentation(task: $0).title } ?? "")
+        _note = State(initialValue: item.map { PlannerTaskPresentation(task: $0).note } ?? "")
         _reminderDate = State(initialValue: item?.reminderDate)
-        _recurrenceOption = State(initialValue: RecurrenceOption(rule: item?.recurrenceRule))
-        _projectID = State(initialValue: item?.projectID)
         _selectedTagIDs = State(initialValue: Set(item?.tags.map(\.id) ?? []))
     }
+    private var availableTags: [AppTag] {
+        let knownIDs = Set(tagStore.tags.map(\.id))
+        return tagStore.tags + (original?.tags.filter { !knownIDs.contains($0.id) } ?? [])
+    }
     var body: some View {
-        EditorScaffold(title: isCreating ? "タスクを書く" : "タスクを編集", canSave: !title.trimmed.isEmpty,
-                       existingID: isCreating ? nil : original?.id, save: save, delete: onDelete, hasUnsavedChanges: hasChanges) {
-            editorTitle("やること", text: $title, focused: $titleFocused)
-            ruledSection("日付") {
-                DatePicker("日付", selection: $date, displayedComponents: isAllDay ? .date : [.date, .hourAndMinute]).labelsHidden()
-                Toggle("終日", isOn: $isAllDay)
+        EditorScaffold(title: isCreating ? "タスクを書く" : "タスク詳細", canSave: !title.trimmed.isEmpty,
+                       existingID: nil, save: save, delete: nil, hasUnsavedChanges: hasChanges, isReadOnly: !isCreating) {
+            ruledSection("タスク名") {
+                if isCreating {
+                    editorTitle("タスク名", text: $title, focused: $titleFocused)
+                } else {
+                    Text(title).font(.title2.bold()).textSelection(.enabled)
+                }
             }
             ruledSection("詳細") {
-                Picker("優先度", selection: $priority) { ForEach(TaskPriority.allCases, id: \.self) { Text($0.displayName).tag($0) } }
-                TextField("メモ（任意）", text: $note, axis: .vertical).lineLimit(2...5)
-            }
-            ruledSection("プロジェクト") {
-                Picker("プロジェクト", selection: $projectID) {
-                    Text("なし").tag(Optional<UUID>.none)
-                    ForEach(projectStore.activeProjects) { project in
-                        Label(project.name, systemImage: project.iconName).tag(Optional(project.id))
-                    }
+                if isCreating {
+                    TextField("詳細（任意）", text: $note, axis: .vertical).lineLimit(8...16)
+                } else {
+                    Text(note.isEmpty ? "詳細なし" : note)
+                        .foregroundStyle(note.isEmpty ? .secondary : .primary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
                 }
             }
             ruledSection("タグ") {
-                if tagStore.tags.isEmpty { Text("設定からタグを作成できます").foregroundStyle(.secondary) }
-                ForEach(tagStore.tags) { tag in
-                    Toggle(tag.name, isOn: Binding(get: { selectedTagIDs.contains(tag.id) }, set: { selected in
-                        if selected { selectedTagIDs.insert(tag.id) } else { selectedTagIDs.remove(tag.id) }
-                    }))
+                let visibleTags = isCreating ? availableTags : availableTags.filter { selectedTagIDs.contains($0.id) }
+                if visibleTags.isEmpty { Text("タグなし").foregroundStyle(.secondary) }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], alignment: .leading, spacing: 8) {
+                    ForEach(visibleTags) { tag in
+                        let isSelected = selectedTagIDs.contains(tag.id)
+                        if isCreating {
+                            Button {
+                                if isSelected { selectedTagIDs.remove(tag.id) } else { selectedTagIDs.insert(tag.id) }
+                            } label: {
+                                tagLabel(tag, isSelected: isSelected)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
+                            .accessibilityHint("タップしてタグの選択を変更")
+                        } else {
+                            tagLabel(tag, isSelected: true)
+                        }
+                    }
                 }
             }
-            ruledSection("リマインダー") { ReminderEditor(reminderDate: $reminderDate, referenceDate: date) }
-            ruledSection("繰り返し") { Picker("繰り返し", selection: $recurrenceOption) { ForEach(RecurrenceOption.allCases) { Text($0.rawValue).tag($0) } } }
-        }.onAppear {
-            if original == nil && !appliedDefaults {
-                let defaults = settings.taskCreationDefaults(referenceDate: date)
-                priority = defaults.priority; isAllDay = defaults.isAllDay; reminderDate = defaults.reminderDate; appliedDefaults = true
+            ruledSection("通知") {
+                Toggle("通知", isOn: Binding(get: { reminderDate != nil }, set: { enabled in
+                    reminderDate = enabled ? notificationDate : nil
+                })).disabled(!isCreating)
             }
-            if isCreating { titleFocused = true }
         }
+        .onAppear { if isCreating { titleFocused = true } }
+    }
+    private func tagLabel(_ tag: AppTag, isSelected: Bool) -> some View {
+        Text("#" + tag.name)
+            .font(.subheadline)
+            .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 44, alignment: .leading)
+            .background(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+    }
+    private var notificationDate: Date {
+        settings.defaultReminder.date(relativeTo: original?.dueDate ?? original?.startDate ?? defaultDate)
+            ?? original?.dueDate ?? original?.startDate ?? defaultDate
     }
     private func save() async -> Bool {
         let now = Date.now
-        let value = TaskItem(id: original?.id ?? UUID(), title: title.trimmed, note: note, startDate: date, dueDate: date,
-                             isAllDay: isAllDay, isCompleted: original?.isCompleted ?? false, completedAt: original?.completedAt,
-                             priority: priority, reminderDate: reminderDate, recurrenceRule: recurrenceOption.rule, projectID: projectID,
-                             category: original?.category, tags: tagStore.tags.filter { selectedTagIDs.contains($0.id) },
-                             createdAt: original?.createdAt ?? now, updatedAt: now)
+        var value = original ?? TaskItem(id: UUID(), title: "", note: "", startDate: defaultDate, dueDate: defaultDate,
+                                        isAllDay: true, isCompleted: false, completedAt: nil,
+                                        priority: .normal, reminderDate: nil, recurrenceRule: nil, projectID: nil,
+                                        category: nil, tags: [], createdAt: now, updatedAt: now)
+        value = Self.applyingDetails(to: value, title: title, note: note,
+                                     tags: availableTags.filter { selectedTagIDs.contains($0.id) },
+                                     reminderDate: reminderDate, now: now)
         return await onSave(value)
     }
+    static func applyingDetails(to task: TaskItem, title: String, note: String, tags: [AppTag], reminderDate: Date?, now: Date) -> TaskItem {
+        var value = task
+        let presentation = PlannerTaskPresentation(task: task)
+        if title != presentation.title {
+            let prefix = task.title.hasPrefix("[dot] ") && presentation.title != task.title ? "[dot] " : ""
+            value.title = prefix + title.trimmed
+        }
+        if note != presentation.note {
+            // Preserve relay metadata that the detail screen hides from the user.
+            if task.note != presentation.note {
+                value.note = task.note.components(separatedBy: "\n").prefix(2).joined(separator: "\n") + "\n" + note
+            } else { value.note = note }
+        }
+        value.tags = tags
+        value.reminderDate = reminderDate
+        value.updatedAt = now
+        return value
+    }
     private var hasChanges: Bool {
-        guard let original else { return !title.trimmed.isEmpty || !note.isEmpty || projectID != nil || reminderDate != nil }
-        return title != original.title || note != original.note || date != (original.dueDate ?? original.startDate) ||
-            isAllDay != original.isAllDay || priority != original.priority || reminderDate != original.reminderDate ||
-            recurrenceOption.rule != original.recurrenceRule || projectID != original.projectID || selectedTagIDs != Set(original.tags.map(\.id))
+        let presentation = original.map { PlannerTaskPresentation(task: $0) }
+        return title != (presentation?.title ?? "") || note != (presentation?.note ?? "") ||
+            reminderDate != original?.reminderDate || selectedTagIDs != Set(original?.tags.map(\.id) ?? [])
     }
 }
 
@@ -223,10 +265,14 @@ struct EventFormView: View {
         EditorScaffold(title: isCreating ? "予定を書く" : "予定を編集", canSave: !title.trimmed.isEmpty,
                        existingID: isCreating ? nil : original?.id, save: save, delete: onDelete, hasUnsavedChanges: hasChanges) {
             editorTitle("予定", text: $title, focused: $titleFocused)
-            ruledSection("日時") {
-                Toggle("終日", isOn: $isAllDay)
-                DatePicker("開始", selection: $start, displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
-                DatePicker("終了", selection: $end, in: start..., displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+            ruledSection(isCreating ? "日付" : "日時") {
+                if isCreating {
+                    DatePicker("日付", selection: $start, displayedComponents: .date)
+                } else {
+                    Toggle("終日", isOn: $isAllDay)
+                    DatePicker("開始", selection: $start, displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+                    DatePicker("終了", selection: $end, in: start..., displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+                }
             }
             ruledSection("メモ") { TextField("メモ（任意）", text: $note, axis: .vertical).lineLimit(2...6) }
             ruledSection("プロジェクト") {
@@ -242,7 +288,7 @@ struct EventFormView: View {
         }.onAppear {
             if original == nil && !appliedDefaults {
                 let defaults = settings.eventCreationDefaults(referenceDate: start)
-                start = defaults.startDate; end = defaults.endDate; isAllDay = false; reminderDate = defaults.reminderDate; appliedDefaults = true
+                reminderDate = defaults.reminderDate; appliedDefaults = true
             }
             if isCreating { titleFocused = true }
         }
@@ -250,8 +296,10 @@ struct EventFormView: View {
     }
     private func save() async -> Bool {
         let now = Date.now
-        let value = CalendarEvent(id: original?.id ?? UUID(), title: title.trimmed, note: note, startDate: start,
-                                  endDate: max(start, end), isAllDay: isAllDay, reminderDate: reminderDate,
+        let value = CalendarEvent(id: original?.id ?? UUID(), title: title.trimmed, note: note,
+                                  startDate: isCreating ? Calendar.current.startOfDay(for: start) : start,
+                                  endDate: isCreating ? Calendar.current.startOfDay(for: start) : max(start, end),
+                                  isAllDay: isCreating || isAllDay, reminderDate: reminderDate,
                                   recurrenceRule: recurrenceOption.rule, projectID: projectID, category: original?.category,
                                   externalEventID: original?.externalEventID, createdAt: original?.createdAt ?? now, updatedAt: now)
         return await onSave(value)

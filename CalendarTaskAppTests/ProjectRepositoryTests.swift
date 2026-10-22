@@ -50,6 +50,53 @@ import SwiftData
         XCTAssertNil(fetchedEvents.first?.projectID)
     }
 
+    func testTaskListTagFiltersSortingAndDayGroups() async throws {
+        let persistence = SwiftDataPersistence(inMemory: true)
+        let suite = "TaskListFilteringTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsStore(defaults: defaults)
+        settings.completedTasksAtBottom = false
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let morning = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 22, hour: 1)))
+        let evening = morning.addingTimeInterval(20 * 3600)
+        let nextDay = morning.addingTimeInterval(24 * 3600)
+        let alpha = AppTag(id: UUID(), name: "A"), beta = AppTag(id: UUID(), name: "B")
+        func task(_ name: String, due: Date?, start: Date? = nil, tags: [AppTag]) -> TaskItem {
+            TaskItem(id: UUID(), title: name, note: "", startDate: start, dueDate: due, isAllDay: true,
+                     isCompleted: false, completedAt: nil, priority: .normal, reminderDate: nil,
+                     recurrenceRule: nil, projectID: nil, category: nil, tags: tags, createdAt: morning, updatedAt: morning)
+        }
+        let store = TaskStore(repository: InMemoryTaskRepository(tasks: [
+            task("朝", due: morning, tags: [beta]), task("夜", due: evening, tags: [alpha]),
+            task("翌日", due: nil, start: nextDay, tags: [alpha]), task("日付なし", due: nil, tags: [])
+        ]))
+        let model = TaskListViewModel(store: store,
+            completionStore: TaskCompletionStore(repository: SwiftDataTaskCompletionRepository(container: persistence.container)),
+            projectStore: ProjectStore(repository: SwiftDataProjectRepository(container: persistence.container)),
+            settingsStore: settings, calendar: calendar)
+        await model.load()
+        model.selectedSection = .all
+        XCTAssertEqual(model.dayGroups.map { $0.tasks.count }, [2, 1, 1])
+        XCTAssertEqual(model.dayGroups.first?.date, calendar.startOfDay(for: morning))
+        XCTAssertNil(model.dayGroups.last?.date)
+        XCTAssertEqual(model.availableTags.map(\.name), ["A", "B"])
+        model.tagFilter = .tag(alpha.id)
+        XCTAssertEqual(Set(model.visibleTasks.map(\.title)), ["夜", "翌日"])
+        model.searchText = "見つからない"
+        XCTAssertTrue(model.visibleTasks.isEmpty)
+        model.searchText = ""
+        model.tagFilter = .untagged
+        XCTAssertEqual(model.visibleTasks.map(\.title), ["日付なし"])
+        model.tagFilter = .all
+        model.sortOption = .tag
+        XCTAssertEqual(model.visibleTasks.last?.title, "日付なし")
+        XCTAssertEqual(model.visibleTasks.first?.tags.first?.name, "A")
+        model.searchText = "B"
+        XCTAssertEqual(model.visibleTasks.map(\.title), ["朝"])
+    }
+
     func testTaskListProjectFilter() async {
         let persistence = SwiftDataPersistence(inMemory: true)
         let projectRepository = SwiftDataProjectRepository(container: persistence.container)

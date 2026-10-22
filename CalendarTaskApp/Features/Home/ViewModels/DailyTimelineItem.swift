@@ -13,6 +13,12 @@ struct DailyTimelineItem: Identifiable, Hashable {
     let isCompleted: Bool
     let source: Source
 
+    static func isWithinDisplayHours(_ date: Date, calendar: Calendar = .current) -> Bool {
+        guard let start = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date),
+              let end = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: date) else { return false }
+        return (start...end).contains(date)
+    }
+
     init(event: CalendarEvent) {
         id = event.id; date = event.startDate; title = event.title; note = event.note
         isCompleted = false; source = .event(event)

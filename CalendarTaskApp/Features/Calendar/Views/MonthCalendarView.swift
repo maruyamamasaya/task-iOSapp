@@ -28,12 +28,13 @@ struct MonthCalendarView: View {
                                     isInDisplayedMonth: isInDisplayedMonth(date), hasEvent: hasEvent(date),
                                     hasIncompleteTask: hasIncompleteTask(date), projectColors: (settings.showProjectColorDots ? projectIDs(date) : []).map { id in
                                         projectStore.project(id: id)?.colorIdentifier.color ?? .secondary
-                                    }) { select(date) }
-                        .overlay(alignment: .top) { Divider() }
+                                    }, select: { select(date) }, centersDayNumber: true)
+                        .overlay {
+                            Rectangle().strokeBorder(settings.theme.appearance(for: colorScheme).mutedInk.opacity(0.16), lineWidth: 0.5)
+                                .allowsHitTesting(false)
+                        }
                 }
             }
-            Text("● 予定  ▫ 未完了タスク · 下段のドットはプロジェクト色")
-                .font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 

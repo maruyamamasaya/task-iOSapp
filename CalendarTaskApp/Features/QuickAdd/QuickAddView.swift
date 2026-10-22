@@ -24,10 +24,9 @@ struct QuickAddView: View {
             ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Picker("追加する種類", selection: Binding(
-                    get: { selectedType ?? (settings.quickAddDefaultType == .task ? .task : .event) },
+                    get: { selectedType ?? .event },
                     set: { selectedType = $0; updatePreview() }
                 )) {
-                    Text("タスク").tag(QuickAddItemType.task)
                     Text("予定").tag(QuickAddItemType.event)
                     Text("メモ").tag(QuickAddItemType.note)
                 }.pickerStyle(.segmented)
@@ -70,10 +69,15 @@ struct QuickAddView: View {
             previewLine("日付", result.date.formatted(date: .long, time: .omitted))
             if result.hasExplicitTime { previewLine("時刻", result.date.formatted(date: .omitted, time: .shortened)) }
             Divider().padding(.top, 2)
-            HStack {
-                Button("編集") { edit(result); dismiss() }.buttonStyle(.bordered)
-                Spacer()
-                Button("追加") { Task { await saveAndContinue(result) } }.buttonStyle(ThemedProminentStyle())
+            if result.type == .task {
+                Text("タスクは dot で追加してください。ここでは予定とメモを追加できます。")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                HStack {
+                    Button("編集") { edit(result); dismiss() }.buttonStyle(.bordered)
+                    Spacer()
+                    Button("追加") { Task { await saveAndContinue(result) } }.buttonStyle(ThemedProminentStyle())
+                }
             }
         }
     }
@@ -85,9 +89,9 @@ struct QuickAddView: View {
     }
     private func parse() {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let defaultType = selectedType ?? (settings.quickAddDefaultType == .task ? .task : .event)
+        let defaultType = selectedType ?? .event
         let parsed = parser.parse(text, defaultDate: defaultDate, defaultType: defaultType)
-        if settings.quickAddSaveImmediately && !settings.quickAddAlwaysPreview {
+        if parsed.type != .task && settings.quickAddSaveImmediately && !settings.quickAddAlwaysPreview {
             Task { await saveAndContinue(parsed) }
         } else {
             result = parsed; focused = false
@@ -96,10 +100,10 @@ struct QuickAddView: View {
     private func updatePreview() {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { result = nil; return }
         result = parser.parse(text, defaultDate: defaultDate,
-                              defaultType: selectedType ?? (settings.quickAddDefaultType == .task ? .task : .event))
+                              defaultType: selectedType ?? .event)
     }
     @MainActor private func saveAndContinue(_ value: QuickAddResult) async {
-        guard !isSaving else { return }
+        guard !isSaving, value.type != .task else { return }
         isSaving = true
         let saved = await add(value)
         saveFailed = !saved

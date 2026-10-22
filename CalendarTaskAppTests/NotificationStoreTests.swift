@@ -20,6 +20,24 @@ final class NotificationStoreTests: XCTestCase {
         XCTAssertEqual(text.body, "請求書を送る")
     }
 
+    @MainActor func testRelayNotificationSyncSkipsUnchangedSnapshotsAndRemovesMissing() async {
+        let notifications = MockNotificationService()
+        let sync = DotRelayNotificationSync(service: notifications)
+        let now = Date.now
+        var task = TaskItem(id: UUID(), title: "通知", note: "", startDate: nil, dueDate: nil,
+                            isAllDay: true, isCompleted: false, completedAt: nil, priority: .normal,
+                            reminderDate: now.addingTimeInterval(3600), recurrenceRule: nil, projectID: nil,
+                            category: nil, tags: [], createdAt: now, updatedAt: now)
+        await sync.synchronize([task])
+        task.note = "同期状態だけが変わった"
+        await sync.synchronize([task])
+        task.isCompleted = true
+        await sync.synchronize([task])
+        await sync.synchronize([])
+        let actions = await notifications.actions
+        XCTAssertEqual(actions, [.syncTask(task.id, false), .syncTask(task.id, true), .removeTask(task.id)])
+    }
+
     @MainActor func testTaskAddCompletionAndDeleteSynchronizeNotification() async {
         let notifications = MockNotificationService()
         let store = TaskStore(repository: InMemoryTaskRepository(tasks: []), notificationService: notifications)

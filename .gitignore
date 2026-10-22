@@ -1,2 +1,31 @@
 .DS_Store
 **/.DS_Store
+
+# Build products, local IDE state, and private relay/runtime data
+/build/
+**/.build/
+**/__pycache__/
+*.py[cod]
+**/xcuserdata/
+*.xcuserstate
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.xcresult/
+/docs/local-validation/
+# Local-only evidence contains personal task/operation/device details.
+/docs/history/
+/docs/*validation-2026*.md
+/docs/theme-undo-integrated-deployment-*.md
+/docs/taskapp-ui-priority-handoff.md
+/Integrations/DotLocalBridge/*-2026*.md
+/Integrations/DotLocalBridge/*VERIFICATION.md
+/Integrations/DotLocalBridge/LAN-APPROVAL.md
+# Prior, unused Web/D1 exploration; not part of the LAN integration.
+/Integrations/DotTaskSite/

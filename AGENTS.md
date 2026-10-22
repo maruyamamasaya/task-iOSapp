@@ -6,6 +6,20 @@
 
 CalendarTaskApp は、予定・タスク・日ごとのメモを一つの手帳として扱う iOS 17+ SwiftUI アプリ。現在は主要画面、編集、QuickAdd、通知、SwiftData 永続化、バックアップ、Widget / App Intent まで実装済みの基盤拡張フェーズであり、単なる InMemory プロトタイプではない。
 
+## 外部サービスの利用方針
+
+このプロジェクトでは現在の実装・今後の設計の双方で Supabase を使用せず、新規導入・外部連携・データ移行の候補からも除外する。端末内保存や JSON を優先する。既存依存を発見した場合は、対象と依存内容を報告し、ユーザーが指示した範囲で置き換える。既存の外部リソース・データは、削除・変更の明示的な指示なしに操作しない。
+
+## Dotタスクの正本（2026-10-21）
+
+Dotタスクを作成・更新する前に、必ず [docs/dot-task-integration.md](docs/dot-task-integration.md) の「タスクデータ作成・更新の共通手順」を読むこと。詳細ルールは同文書に集約する。
+
+ユーザー指示により、Dotタスクの正本は Mac の `~/Library/Application Support/CalendarTaskApp/DotLocalRelay/state/tasks.json` とする。Dotからの参照・作成・更新は `Integrations/DotLocalBridge/canonical_tasks.py` を使用し、操作前に最新revisionを読む。SQLiteは配信用投影と受信箱であり、Web/D1や古いJSONから正本を上書きしない。直接JSON/DB編集は禁止。iPhone受信は適用と区別し、認証済み本人の完了操作はrevision一致時に受信箱へ永続保存した後、正本更新・読戻し・確認応答まで自動実行する。競合は上書きせず、保存失敗は受信箱に保持して同じoperation IDで再試行する。明示applyは復旧用に残す。現在地・優先課題は `docs/dot-task-integration.md`、操作手順は `Integrations/DotLocalBridge/CANONICAL-SOURCE.md` を参照。Dotチャットの実際の採用は別途確認する。
+
+## Dotのひとこと
+
+本人がDotチャットで見通し・振り返りの生成を頼んだ場合は、[Integrations/DotLocalBridge/DAILY-BRIEF.md](Integrations/DotLocalBridge/DAILY-BRIEF.md) の手順でアプリ受信材料を読み、生成文を正規CLIで保存・読戻しする。未受信・古い材料や未導入を生成/実機反映済みと扱わない。タスク正本と既存メモは変更しない。
+
 ## アーキテクチャ
 
 基本の依存方向は `View → ViewModel → Store → Repository protocol → Data実装`。構築は `App/AppDependencies.swift` に集約する。

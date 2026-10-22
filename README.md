@@ -1,38 +1,33 @@
 # CalendarTaskApp
 
-カレンダー、タスク、日ごとのメモを一つの手帳として扱う iOS 17+ アプリです。SwiftUI で構築され、データは SwiftData に保存されます。
+予定・タスク・日別メモを一つの手帳として扱うiOS 17+のSwiftUIアプリです。Dotがタスクを整理し、iPhoneでは予定の確認と完了・取消を行います。
 
-## 実装済みの主な機能
+## 使い方と現在の機能
 
-- **今日**: 選択日の予定数と残りタスク、時系列の予定・タスク、日別メモを1日の手帳として表示。固定追加ボタンと各タスクの操作ボタンから追加・完了・日付変更。
-- **カレンダー**: 月・週・日表示、日付選択、予定・タスク・メモの確認と編集。
-- **タスク**: セクション、検索、並べ替え、完了状態、繰り返し、優先度、プロジェクト分類。
-- **統一編集フロー**: タスク・予定・メモの作成、編集、削除、未保存変更の確認。
-- **QuickAdd**: 「明日 18:00 病院」「予定: 8/20 打ち合わせ」のような入力を解析し、入力中のプレビュー、種類選択、連続追加、詳細編集へ接続。メモは既存の日別メモに追記し、保存失敗時は入力を保持。
-- **設定**: 初期画面、カレンダー・タスク表示、作成時の既定値、QuickAdd、通知、外観、触覚フィードバック、プロジェクト、タグ、バックアップ。
-- **通知と繰り返し**: UserNotifications によるリマインダーと occurrence 単位の繰り返しタスク完了管理。
-- **Widget**: small / medium の「今日の手帳」で当日の予定・タスクを表示し、App Intent でタスクの完了を切り替え。
+- **今日**：日別の「Dotのひとこと」、時間未指定のやること、9:00〜21:00のタイムライン、できたことを表示します。長い名前を折り返し、プロジェクトとタグで対象を識別します。時刻範囲外の項目はタイムラインには表示しません。
+- **タスク**：最初は今日から7暦日の「今週」。仕事／私用／その他で切り替え、プロジェクト別に次の一歩・仮予定／希望日・固定期限を表示します。今週では保留・検討中・統合済み・完了を除外し、完了直後は取り消せます。全件・日付別・タグ絞込みはメニューに残します。
+- **カレンダー**：月・週・日表示。月は日付と日別の薄い枠、週は時間付き／終日の表示を分け、予定・Dotタスク・日別メモを確認できます。
+- **編集**：予定・日別メモは既存の統一編集／QuickAdd経路を利用します。新しい予定は日付のみで登録し、保存後に時刻を編集できます。Dotタスクの名前・本文・日程はMacの正本で整理し、iPhoneの中継更新は完了・取消に限定します。タスクの追加・複製はDotへ集約します。
+- **通知**：明示した通知日時を端末が取得し、既存の通知権限に従って予約します。日付や仮作業枠から新しい通知を勝手に作りません。
+- **Widget**：「今日の手帳」「月の手帳」は既存App Groupの表示用キャッシュを使用します。端末保存後に共有投影を更新して再読込みを要求しますが、実描画の時刻はiOSが管理します。
+- **設定・バックアップ**：表示・外観・通知・既存SwiftDataのバックアップを保持します。Dot正本・端末outboxの復旧は別手順です。
 
-## 技術構成
+「Dotのひとこと」はチャットで依頼した際に生成する文章の受渡し経路です。定期生成や外部LLMサービスは追加しません。コードの存在と、本番中継への配布・実機受信・生成文の実表示は別の確認事項です。
 
-```text
-View → ViewModel → Store → Repository → SwiftData
-```
+## 保存とLAN同期
 
-依存関係は `AppDependencies` で組み立てます。本番は SwiftData、設定値は UserDefaults を利用し、テスト用に InMemory Repository と差し替え可能です。アプリと Widget は、両 target の署名設定を行ったうえで App Group の SwiftData store を共有する設計です。
+タスクの正本はMacの `~/Library/Application Support/CalendarTaskApp/DotLocalRelay/state/tasks.json`。正式CLIでrevisionを確認して一件ずつ更新し、同一LANの端末別認証付きHTTPSと証明書ピニングでiPhoneへ配信します。SQLiteは配信用投影と永続受信箱です。予定・既存の日別メモ等はSwiftData、設定はUserDefaultsを利用します。
 
-主要ディレクトリは次のとおりです。
+iPhoneの完了変更は端末へ永続保存してから送信し、Mac受信箱保存→revision一致時の正本保存・読戻し→確認応答でoutboxを解消します。競合・保存失敗は保持します。起動・前景復帰・前景中に再試行し、手動送受信は復旧用です。バックグラウンド・終了中・Macスリープ中の常時同期は保証しません。未設定端末を自動ペアリングしません。
 
-- `CalendarTaskApp/App`: 起動と依存性注入、ルート UI。
-- `CalendarTaskApp/Core`: モデル、Repository 契約、Store、Service、バックアップ。
-- `CalendarTaskApp/Data`: SwiftData と Repository 実装、InMemory 実装、SampleData。
-- `CalendarTaskApp/Features`: Home / Calendar / Tasks / Settings / QuickAdd / Editing。
-- `CalendarTaskApp/DesignSystem`, `Utilities`, `Resources`: 共有スタイル、汎用処理、Asset。
-- `CalendarTaskWidget`: Widget と App Intent。
-- `CalendarTaskAppTests`: unit test。
+初回接続の入口は「タスク」→「その他」→「Mac 中継」。従来の非破壊JSON取込みも同メニューに残ります。同じslugは中継を優先し、取込みファイルから欠落した行を削除しません。Web／D1は同期先ではなく、Supabaseや新しいクラウドを必要としません。
 
-## 開発者向け情報
+## 開発・運用資料
 
-Xcode で `CalendarTaskApp.xcodeproj` を開き、`CalendarTaskApp` scheme を実行してください。Widget を端末で利用する場合は、アプリと Widget の両 target で同じ App Group を有効にし、署名設定に合う `APP_GROUP_IDENTIFIER` を指定する必要があります。詳細は `CalendarTaskWidget/README.md` を参照してください。
+1. [`AGENTS.md`](AGENTS.md)：作業前の規約。
+2. [現在仕様・共通手順・未確認事項](docs/dot-task-integration.md)：タスク操作と運用の入口。
+3. [アーキテクチャ](docs/architecture.md)：DI、保存境界、Widget共有。
+4. [検証・公開範囲](docs/validation-status.md)：最終ソースの検証と未導入範囲。
+5. [入力形式](Integrations/DotLocalBridge/DOT-TASK-FORMAT.md)、[正本CLI](Integrations/DotLocalBridge/CANONICAL-SOURCE.md)、[常駐運用](Integrations/DotLocalBridge/SERVICE-PROPOSAL.md)、[Dotのひとこと](Integrations/DotLocalBridge/DAILY-BRIEF.md)、[復旧](docs/dot-backup-recovery.md)。
 
-設計規約と変更手順は最初に [`AGENTS.md`](AGENTS.md) を読み、詳しい依存関係は [`docs/architecture.md`](docs/architecture.md) を参照してください。
+Xcodeで `CalendarTaskApp.xcodeproj` の `CalendarTaskApp` schemeを使用します。アプリとWidgetの既存署名・App Groupを維持してください。変更に応じた検証はAGENTS.mdに従い、実タスクや認証情報をfixture・公開Gitへ入れません。Gitのpushは本番中継への配布やiPhone更新ではありません。

@@ -14,9 +14,11 @@ struct CalendarTaskWidgetProvider: TimelineProvider {
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<CalendarTaskWidgetEntry>) -> Void) {
         Task { @MainActor in
-            let now = Date.now, entry = CalendarTaskWidgetEntry(date: now, snapshot: WidgetDataProvider().today(now: now))
-            let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? now.addingTimeInterval(3600)
-            completion(Timeline(entries: [entry], policy: .after(nextDay)))
+            let now = Date.now, provider = WidgetDataProvider()
+            let entries = provider.timelineDates(now: now).map { date in
+                CalendarTaskWidgetEntry(date: date, snapshot: provider.today(now: date))
+            }
+            completion(Timeline(entries: entries, policy: .atEnd))
         }
     }
 }
@@ -240,7 +242,7 @@ struct CalendarTaskWidgetView: View {
                 .padding(.trailing, 8)
                 .accessibilityLabel("完了にする")
             } else {
-                Image(systemName: "calendar")
+                Image(systemName: item.kind == .task ? "circle" : "calendar")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(palette.mutedInk)
                     .frame(width: 22, alignment: .leading)
@@ -416,7 +418,10 @@ struct CalendarTaskTodayWidget: Widget {
 }
 
 @main struct CalendarTaskWidgetBundle: WidgetBundle {
-    var body: some Widget { CalendarTaskTodayWidget() }
+    var body: some Widget {
+        CalendarTaskTodayWidget()
+        CalendarTaskMonthWidget()
+    }
 }
 
 #Preview("予定とタスク", as: .systemSmall) { CalendarTaskTodayWidget() } timeline: {
@@ -444,4 +449,182 @@ struct CalendarTaskTodayWidget: Widget {
     let item = WidgetDisplayItem(id: id, kind: .task, title: "毎日の振り返り", date: .now, isAllDay: true,
                                  taskID: id, isRecurring: true, occurrenceDate: .now, isCompleted: false, projectColor: .teal)
     CalendarTaskWidgetEntry(date: .now, snapshot: WidgetTodaySnapshot(date: .now, events: [], tasks: [item]))
+}
+
+
+struct CalendarTaskMonthWidget: Widget {
+    let kind = "CalendarTaskMonthWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CalendarTaskWidgetProvider()) {
+            CalendarTaskMonthWidgetView(entry: $0)
+        }
+        .configurationDisplayName("月の手帳")
+        .description("月間カレンダーと今日の予定・タスクを、手帳のようにすっきりと。")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
+private struct CalendarTaskMonthWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
+    let entry: CalendarTaskWidgetEntry
+
+    private var calendar: Calendar { .current }
+    private var palette: WidgetPalette {
+        let preferences = WidgetAppearancePreferences.current
+        let scheme: ColorScheme = preferences.appearance == "ライト" ? .light
+            : preferences.appearance == "ダーク" ? .dark : colorScheme
+        return WidgetPalette(theme: preferences.theme, colorScheme: scheme)
+    }
+
+    var body: some View {
+        Group {
+            if family == .systemSmall {
+                month(entry.date)
+            } else {
+                GeometryReader { geometry in
+                    let columnWidth = max(0, (geometry.size.width - 24.5) / 2)
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(spacing: 12) {
+                            month(entry.date)
+                            if family == .systemLarge,
+                               let next = calendar.date(byAdding: .month, value: 1, to: entry.date) {
+                                Rectangle().fill(palette.border).frame(height: 0.5)
+                                month(next)
+                            }
+                        }
+                        .frame(width: columnWidth)
+                        Rectangle().fill(palette.border).frame(width: 0.5)
+                        agenda.frame(width: columnWidth, alignment: .topLeading)
+                            .frame(maxHeight: .infinity, alignment: .topLeading)
+                    }
+                }
+            }
+        }
+        .containerBackground(for: .widget) {
+            LinearGradient(colors: [palette.background, palette.control.opacity(0.45)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+        .widgetURL(URL(string: "calendarTaskApp://today"))
+    }
+
+    private func month(_ date: Date) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(date.formatted(.dateTime.month(.wide)))
+                    .font(.system(size: family == .systemSmall ? 18 : 16, weight: .medium, design: .serif))
+                    .foregroundStyle(palette.ink)
+                Spacer(minLength: 0)
+                Text(date.formatted(.dateTime.year()))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(palette.mutedInk)
+            }
+            Grid(horizontalSpacing: 0, verticalSpacing: 1) {
+                GridRow {
+                    ForEach(0..<7, id: \.self) { index in
+                        let weekday = (calendar.firstWeekday - 1 + index) % 7
+                        Text(calendar.veryShortStandaloneWeekdaySymbols[weekday])
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(weekday == 0 ? Color.red : weekday == 6 ? Color.blue : palette.mutedInk)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                let dates = calendar.monthGridDates(containing: date)
+                ForEach(0..<6, id: \.self) { week in
+                    GridRow {
+                        ForEach(Array(dates.dropFirst(week * 7).prefix(7)), id: \.self) { day in
+                            dayCell(day, month: date)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func dayCell(_ day: Date, month: Date) -> some View {
+        let today = calendar.isDate(day, inSameDayAs: entry.date)
+        let inMonth = calendar.isDate(day, inSameMonthAs: month)
+        let weekday = calendar.component(.weekday, from: day)
+        let isHoliday = calendar.isJapaneseHoliday(day)
+        let tint: Color = isHoliday || weekday == 1 ? .red : weekday == 7 ? .blue : palette.ink
+        return Text("\(calendar.component(.day, from: day))")
+            .font(.system(size: family == .systemSmall ? 10.5 : family == .systemLarge ? 11 : 9, weight: today ? .bold : .medium, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(today ? palette.background : tint.opacity(inMonth ? 1 : 0.3))
+            .frame(maxWidth: .infinity)
+            .frame(height: family == .systemLarge ? 17 : 14)
+            .background {
+                if today { Circle().fill(isHoliday || weekday == 1 || weekday == 7 ? tint : palette.accent)
+                    .frame(width: family == .systemSmall ? 18 : family == .systemLarge ? 19 : 16,
+                           height: family == .systemSmall ? 18 : family == .systemLarge ? 19 : 16) }
+            }
+            .accessibilityLabel(day.formatted(date: .complete, time: .omitted) + (today ? "、今日" : "") + (isHoliday ? "、祝日" : ""))
+    }
+
+    private var agenda: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("TODAY")
+                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .tracking(2)
+                .foregroundStyle(palette.accent)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(entry.date.formatted(.dateTime.day()))
+                    .font(.system(size: 32, weight: .regular, design: .serif))
+                Text(entry.date.formatted(.dateTime.weekday(.wide)))
+                    .font(.system(size: 9))
+                    .foregroundStyle(palette.mutedInk)
+            }
+            .foregroundStyle(palette.ink)
+            Rectangle().fill(palette.border).frame(height: 0.5)
+            let items = (entry.snapshot.events + entry.snapshot.tasks).sorted {
+                if $0.isAllDay != $1.isAllDay { return $0.isAllDay }
+                return $0.date < $1.date
+            }
+            if items.isEmpty {
+                VStack(alignment: .leading, spacing: 7) {
+                    Image(systemName: "leaf").font(.system(size: 18, weight: .light))
+                        .foregroundStyle(palette.ornament)
+                    Text("余白を楽しむ一日")
+                        .font(.system(size: 11, weight: .medium, design: .serif))
+                        .foregroundStyle(palette.ink)
+                    Text("予定もタスクもありません")
+                        .font(.system(size: 9)).foregroundStyle(palette.mutedInk)
+                }
+            } else {
+                ForEach(Array(items.prefix(family == .systemLarge ? 5 : 1))) { item in
+                    HStack(alignment: .top, spacing: 6) {
+                        Capsule().fill(item.projectColor?.color ?? palette.accent)
+                            .frame(width: 2, height: 27)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.isAllDay ? "終日" : item.date.formatted(date: .omitted, time: .shortened))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(palette.mutedInk)
+                            Text(item.title).font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(palette.ink).lineLimit(1)
+                        }
+                    }
+                }
+                let remaining = items.count - (family == .systemLarge ? 5 : 1)
+                if remaining > 0 {
+                    Text("ほか \(remaining)件")
+                        .font(.system(size: 9)).foregroundStyle(palette.mutedInk)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+#Preview("月の手帳・小", as: .systemSmall) { CalendarTaskMonthWidget() } timeline: {
+    CalendarTaskWidgetEntry(date: .now, snapshot: .placeholder())
+}
+#Preview("月の手帳・中", as: .systemMedium) { CalendarTaskMonthWidget() } timeline: {
+    CalendarTaskWidgetEntry(date: .now, snapshot: .placeholder())
+}
+#Preview("月の手帳・大", as: .systemLarge) { CalendarTaskMonthWidget() } timeline: {
+    CalendarTaskWidgetEntry(date: .now, snapshot: .placeholder())
+}
+#Preview("月の手帳・空", as: .systemLarge) { CalendarTaskMonthWidget() } timeline: {
+    CalendarTaskWidgetEntry(date: .now, snapshot: WidgetTodaySnapshot(date: .now, events: [], tasks: []))
 }

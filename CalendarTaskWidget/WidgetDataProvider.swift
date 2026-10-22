@@ -31,30 +31,52 @@ struct WidgetTodaySnapshot: Hashable {
     private let container: ModelContainer
     private let calendar: Calendar
     private let recurrence: RecurrenceCalculator
+    private let dotTasks: () throws -> [DotWidgetTask]
 
-    init(container: ModelContainer = SwiftDataPersistence.shared.container, calendar: Calendar = .current) {
+    init(container: ModelContainer = SwiftDataPersistence.shared.container, calendar: Calendar = .current,
+         dotTasks: @escaping () throws -> [DotWidgetTask] = { try DotWidgetTaskCache.shared()?.load() ?? [] }) {
+        self.dotTasks = dotTasks
         self.container = container; self.calendar = calendar; recurrence = RecurrenceCalculator(calendar: calendar)
+    }
+
+    // Precompute local calendar-day and event boundaries. No high-frequency polling.
+    func timelineDates(now: Date) -> [Date] {
+        let start = calendar.startOfDay(for: now)
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: start),
+              let horizon = calendar.date(byAdding: .day, value: 2, to: start) else { return [now] }
+        var dates: Set<Date> = [now, tomorrow, horizon]
+        func add(_ date: Date) { if date > now, date < horizon { dates.insert(date) } }
+        let context = ModelContext(container)
+        let events = (try? context.fetch(FetchDescriptor<CalendarEventEntity>()).map(\.domain)) ?? []
+        for event in events where !event.isAllDay {
+            if let rule = event.recurrenceRule {
+                for day in [start, tomorrow] where recurrence.occurs(anchor: event.startDate, rule: rule, on: day) {
+                    let occurrence = recurrence.occurrenceDate(anchor: event.startDate, on: day)
+                    add(occurrence); add(occurrence.addingTimeInterval(event.endDate.timeIntervalSince(event.startDate)))
+                }
+            } else { add(event.startDate); add(event.endDate) }
+        }
+        for task in (try? dotTasks()) ?? [] where !task.isAllDay && !task.isCompleted {
+            if let date = task.resolvedDate(calendar: calendar) { add(date) }
+        }
+        let required: Set<Date> = [now, tomorrow, horizon]
+        return required.union(dates.subtracting(required).sorted().prefix(61)).sorted()
     }
 
     func today(now: Date = .now) -> WidgetTodaySnapshot {
         let context = ModelContext(container)
         do {
-            let tasks = try context.fetch(FetchDescriptor<TaskEntity>()).map(\.domain)
+            let tasks = (try? dotTasks()) ?? []
             let events = try context.fetch(FetchDescriptor<CalendarEventEntity>()).map(\.domain)
-            let completions = try context.fetch(FetchDescriptor<TaskCompletionEntity>()).map(\.domain)
             let projects = try context.fetch(FetchDescriptor<ProjectEntity>()).map(\.domain)
             let colors = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.colorIdentifier) })
             let taskItems = tasks.compactMap { task -> WidgetDisplayItem? in
-                guard let anchor = task.dueDate ?? task.startDate,
-                      recurrence.occurs(anchor: anchor, rule: task.recurrenceRule, on: now) else { return nil }
-                let occurrenceCompleted = task.recurrenceRule != nil && completions.contains {
-                    $0.taskID == task.id && calendar.isDate($0.occurrenceDate, inSameDayAs: now)
-                }
-                guard !task.isCompleted && !occurrenceCompleted else { return nil }
-                let date = recurrence.occurrenceDate(anchor: anchor, on: now)
+                guard let date = task.resolvedDate(calendar: calendar), calendar.isDate(date, inSameDayAs: now),
+                      !task.isCompleted else { return nil }
+                // Dot actions must go through the app's relay, never the native SwiftData intent.
                 return WidgetDisplayItem(id: task.id, kind: .task, title: task.title, date: date, isAllDay: task.isAllDay,
-                                         taskID: task.id, isRecurring: task.recurrenceRule != nil, occurrenceDate: now, isCompleted: false,
-                                         projectColor: task.projectID.flatMap { colors[$0] })
+                                         taskID: nil, isRecurring: false, occurrenceDate: nil, isCompleted: false,
+                                         projectColor: nil)
             }.sorted { $0.date < $1.date }
             let eventItems = events.compactMap { event -> WidgetDisplayItem? in
                 if let rule = event.recurrenceRule {
