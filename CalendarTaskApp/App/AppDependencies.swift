@@ -45,12 +45,12 @@ import SwiftData
             for row in snapshot.tasks {
                 let t = row.value
                 values[row.id] = PlannerTaskMetadata(category: t.category, status: t.status, projectName: t.project?.name,
-                    scheduleLabel: t.dateLabel, deadlineDay: t.deadlineDate, deadlineTime: t.deadlineTime, timeZone: t.timeZone)
+                    scheduleLabel: t.dateLabel, deadlineDay: t.deadlineDate, deadlineTime: t.deadlineTime, timeZone: t.timeZone, taskKind: t.taskKind)
             }
             dotTaskStore?.load()
             for row in dotTaskStore?.snapshot?.tasks ?? [] where !relaySlugs.contains(row.slug) {
                 values[row.id] = PlannerTaskMetadata(category: row.category, status: row.status, projectName: nil,
-                    scheduleLabel: row.dateLabel, deadlineDay: row.deadlineDate, deadlineTime: row.deadlineTime, timeZone: row.timeZone)
+                    scheduleLabel: row.dateLabel, deadlineDay: row.deadlineDate, deadlineTime: row.deadlineTime, timeZone: row.timeZone, taskKind: row.taskKind)
             }
             return values
         }

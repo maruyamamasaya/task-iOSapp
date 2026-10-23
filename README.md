@@ -32,3 +32,5 @@ iPhoneの完了変更は端末へ永続保存してから送信し、Mac受信�
 5. [入力形式](Integrations/DotLocalBridge/DOT-TASK-FORMAT.md)、[正本CLI](Integrations/DotLocalBridge/CANONICAL-SOURCE.md)、[常駐運用](Integrations/DotLocalBridge/SERVICE-PROPOSAL.md)、[Dotのひとこと](Integrations/DotLocalBridge/DAILY-BRIEF.md)、[復旧](docs/dot-backup-recovery.md)。
 
 Xcodeで `CalendarTaskApp.xcodeproj` の `CalendarTaskApp` schemeを使用します。アプリとWidgetの既存署名・App Groupを維持してください。変更に応じた検証はAGENTS.mdに従い、実タスクや認証情報をfixture・公開Gitへ入れません。Gitのpushは本番中継への配布やiPhone更新ではありません。
+
+タスク一覧では種別（予定・具体的タスク・やりたいこと・細々した用事）と状態（保留中・考え中など）を別々に切り替えられます。未設定の既存タスクも保持し、検索は初期状態で全体を対象にします。「全体から検索」を切ると現在の絞込み内で検索します。

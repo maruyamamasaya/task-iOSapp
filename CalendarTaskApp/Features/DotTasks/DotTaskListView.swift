@@ -92,13 +92,36 @@ struct DotPlannerListView: View {
     var body: some View {
         VStack(spacing: 0) {
             if viewModel.selectedSection == .week {
-                HStack { Text("今週").font(.headline); Spacer(); Text(viewModel.weekRangeLabel).font(.subheadline).foregroundStyle(.secondary) }
+                HStack {
+                    Text(!viewModel.searchText.isEmpty && viewModel.searchesAllTasks ? "全体検索" : "今週").font(.headline)
+                    Spacer()
+                    if viewModel.searchText.isEmpty || !viewModel.searchesAllTasks {
+                        Text(viewModel.weekRangeLabel).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
                     .padding(.horizontal, 16).padding(.top, 8)
             }
             Picker("大分類", selection: $viewModel.area) {
                 ForEach(PlannerArea.allCases) { Text($0.rawValue).tag($0) }
             }.pickerStyle(.segmented).padding(.horizontal, 16).padding(.vertical, 8)
+            HStack {
+                Menu {
+                    ForEach(PlannerKind.allCases) { value in
+                        Button(value.rawValue) { viewModel.selectKind(value) }
+                    }
+                } label: { Label("種別: " + viewModel.kind.rawValue, systemImage: "square.grid.2x2") }
+                Spacer()
+                Menu {
+                    ForEach(PlannerStatus.allCases) { value in
+                        Button(value.rawValue) { viewModel.selectStatus(value) }
+                    }
+                } label: { Label("状態: " + viewModel.status.rawValue, systemImage: "line.3.horizontal.decrease.circle") }
+            }.font(.subheadline).padding(.horizontal, 16).frame(minHeight: 44)
             controls
+            if !viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Toggle("全体から検索", isOn: $viewModel.searchesAllTasks)
+                    .font(.caption).padding(.horizontal, 16)
+            }
             List {
                 Group {
                     if let error = viewModel.operationError {
@@ -169,12 +192,17 @@ struct DotPlannerListView: View {
             }
             Spacer(minLength: 8)
             Menu {
+                Picker("プロジェクト", selection: $viewModel.projectFilter) {
+                    Text("すべてのプロジェクト").tag(TaskProjectFilter.all)
+                    Text("プロジェクトなし").tag(TaskProjectFilter.unassigned)
+                    ForEach(viewModel.projects) { project in Text(project.name).tag(TaskProjectFilter.project(project.id)) }
+                }
                 Picker("タグ", selection: $viewModel.tagFilter) {
                     Text("すべてのタグ").tag(TaskTagFilter.all)
                     Text("タグなし").tag(TaskTagFilter.untagged)
                     ForEach(viewModel.availableTags) { tag in Text(tag.name).tag(TaskTagFilter.tag(tag.id)) }
                 }
-            } label: { Label(viewModel.tagFilterLabel, systemImage: "tag").lineLimit(1) }
+            } label: { Label(viewModel.projectFilter == .all ? viewModel.tagFilterLabel : viewModel.projectFilterLabel + "・" + viewModel.tagFilterLabel, systemImage: "tag").lineLimit(1) }
             Spacer(minLength: 8)
             Menu {
                 Toggle("日付ごとにまとめる", isOn: $viewModel.groupsByDay)
@@ -206,6 +234,8 @@ struct DotPlannerListView: View {
                         .font(.body.weight(.medium)).multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .strikethrough(viewModel.displayedCompletion(for: task))
+                    Text(viewModel.kindLabel(for: task) + " · " + viewModel.statusLabel(for: task))
+                        .font(.caption).foregroundStyle(.secondary)
                     if viewModel.selectedSection == .week {
                         if let step = viewModel.nextStep(for: task), !step.isEmpty {
                             Text(step).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)

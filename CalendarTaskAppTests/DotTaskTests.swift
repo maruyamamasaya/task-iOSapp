@@ -26,6 +26,20 @@ import DotLocalBridge
         DotTaskRecord(id: UUID(), slug: slug, title: title, date: nil, dateLabel: "未定",
                       status: "pending", details: "", category: "test")
     }
+    func testKindImportRefreshAndRestartKeepsIdentity() async throws {
+        let cache = Cache(), source = Source()
+        let store = DotTaskStore(source:source, cache:cache)
+        var first = row("synthetic-kind"); first.taskKind = "idea"
+        source.feed = DotTaskFeed(updatedAt:"v1",tasks:[first]); await store.refresh()
+        let identity = try XCTUnwrap(store.snapshot?.tasks.first?.id)
+        first.taskKind = "task"
+        source.feed = DotTaskFeed(updatedAt:"v2",tasks:[first]); await store.refresh()
+        let reopened = DotTaskStore(source:source,cache:cache); reopened.load()
+        XCTAssertEqual(reopened.snapshot?.tasks.first?.id,identity)
+        XCTAssertEqual(reopened.snapshot?.tasks.first?.taskKind,"task")
+        let data = Data(FixtureDotTaskSource.json.replacingOccurrences(of: "\"category\":\"開発\"", with: "\"category\":\"開発\",\"taskKind\":\"event\"").utf8)
+        XCTAssertEqual(try DotTaskFeedDecoder.decode(data).tasks.first?.taskKind,"event")
+    }
     func testWireDatesAndOptionalFields() async throws {
         let feed = try DotTaskFeedDecoder.decode(Data(FixtureDotTaskSource.json.utf8))
         XCTAssertEqual(feed.tasks[0].date, "2026-10-21")

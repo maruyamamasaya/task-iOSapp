@@ -12,6 +12,7 @@ struct DotTaskRecord: Codable, Equatable, Identifiable {
     var category: String
     var subcategory: String?
     var parentId: String?
+    var taskKind: String? = nil
     var aiContext: String? = nil
     var startTime: String? = nil
     var endTime: String? = nil

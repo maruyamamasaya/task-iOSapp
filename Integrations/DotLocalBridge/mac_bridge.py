@@ -50,7 +50,7 @@ def atomic_json(path, value):
 
 def validate_task(row):
     required = {'id', 'title', 'date', 'dateLabel', 'status', 'details', 'category', 'completed', 'revision'}
-    optional = {'subcategory', 'parentId', 'project', 'tags', 'reminderAt', 'aiContext', 'startTime', 'endTime', 'timeZone', 'deadlineDate', 'deadlineTime'}
+    optional = {'subcategory', 'parentId', 'project', 'tags', 'reminderAt', 'aiContext', 'startTime', 'endTime', 'timeZone', 'deadlineDate', 'deadlineTime', 'taskKind'}
     if not isinstance(row, dict) or row.keys() - required - optional or not required <= row.keys():
         raise BridgeError(400, 'invalid_task')
     if any(not isinstance(row[k], str) for k in required - {'date', 'completed', 'revision'}):
@@ -64,6 +64,8 @@ def validate_task(row):
             if dt.date.fromisoformat(row['date']).isoformat() != row['date']: raise ValueError()
         except (ValueError, TypeError): raise BridgeError(400, 'invalid_date')
     if any(k in row and not isinstance(row[k], str) for k in ('subcategory', 'parentId')): raise BridgeError(400, 'invalid_task')
+    if row.get('taskKind') is not None and row['taskKind'] not in ('event', 'task', 'idea', 'errand'):
+        raise BridgeError(400, 'invalid_task_kind')
     if row.get('aiContext') is not None and not isinstance(row['aiContext'], str): raise BridgeError(400, 'invalid_ai_context')
     for field in ('startTime', 'endTime', 'deadlineTime'):
         value = row.get(field)

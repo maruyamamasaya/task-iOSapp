@@ -76,3 +76,7 @@ Mac更新はiPhoneが前景で同期した後に反映する。アプリ終了�
 ## 検証・導入の現在地
 
 現在の公開可能な検証結果・未確認・未導入範囲は [検証記録](../../docs/validation-status.md) へ集約する。個人タスク・実端末・実操作の記録はローカルに保持し、公開Gitへ転記しない。
+
+## 任意の種別
+
+`taskKind`は`event`（予定）/`task`（具体的タスク）/`idea`（やりたいこと）/`errand`（細々した用事）またはnull。省略は未設定。category/project/tags/status/completedとは独立し、既存の未設定行を日程から推測しない。CLI updateの省略項目は保持する。対応済み中継でのみ追加し、既存ID/revisionを維持する。

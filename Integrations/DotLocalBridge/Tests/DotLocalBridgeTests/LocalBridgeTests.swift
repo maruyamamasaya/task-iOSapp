@@ -12,6 +12,25 @@ final class LocalBridgeTests: XCTestCase {
         OperationReceipt(bridgeID: bridge, operationId: operation.operationId, status: status,
                          acknowledgment: status == "applied" ? ApplyAcknowledgment(taskId: operation.taskId, revision: operation.expectedRevision + 1, completed: operation.completed, target: "dot_local_file", operationDigest: String(repeating: "a", count: 64)) : nil)
     }
+    func testOptionalKindSurvivesOutboxAcknowledgmentAndRestart() async throws {
+        let url = file(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = try LocalBridgeStore(file: url, bridgeID: "fixture")
+        var row = task(); row.taskKind = "errand"
+        try await store.merge(BridgeFeed(bridgeID: "fixture", tasks: [row]))
+        let op = try await store.queueCompletion(slug: row.id, completed: true)
+        let pending = try LocalBridgeStore(file: url, bridgeID: "fixture")
+        let saved = await pending.snapshot
+        XCTAssertEqual(saved.tasks.first?.value.taskKind, "errand")
+        XCTAssertEqual(saved.outbox.first?.operation.operationId, op.operationId)
+        try await pending.accept(receipt(op))
+        let reopened = try LocalBridgeStore(file: url, bridgeID: "fixture")
+        let final = await reopened.snapshot
+        XCTAssertEqual(final.tasks.first?.value.taskKind, "errand")
+        XCTAssertTrue(final.outbox.isEmpty)
+        XCTAssertTrue(final.tasks.first!.value.completed)
+        let legacy = try JSONDecoder().decode(WireTask.self, from: JSONEncoder().encode(task()))
+        XCTAssertNil(legacy.taskKind)
+    }
     func testScheduleAIAndPendingSurviveRestart() async throws {
         let url = file(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let store = try LocalBridgeStore(file: url, bridgeID: "fixture")

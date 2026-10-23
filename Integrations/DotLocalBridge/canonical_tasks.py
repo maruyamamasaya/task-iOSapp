@@ -101,7 +101,7 @@ class CanonicalBridge(Bridge):
         raise BridgeError(409, 'mac_canonical_source_already_selected')
 
     def update(self, task_id, expected_revision, changes, create=False, request_ref=None):
-        allowed = {'title', 'date', 'dateLabel', 'status', 'details', 'category', 'subcategory', 'parentId', 'completed', 'project', 'tags', 'reminderAt', 'aiContext', 'startTime', 'endTime', 'timeZone', 'deadlineDate', 'deadlineTime'}
+        allowed = {'title', 'date', 'dateLabel', 'status', 'details', 'category', 'subcategory', 'parentId', 'completed', 'project', 'tags', 'reminderAt', 'aiContext', 'startTime', 'endTime', 'timeZone', 'deadlineDate', 'deadlineTime', 'taskKind'}
         if not isinstance(changes, dict) or changes.keys() - allowed: raise BridgeError(400, 'invalid_changes')
         if create and expected_revision!=0: raise BridgeError(409,'task_exists')
         with self.locked():

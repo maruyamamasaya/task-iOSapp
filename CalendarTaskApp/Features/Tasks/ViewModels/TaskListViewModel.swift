@@ -41,6 +41,32 @@ enum PlannerArea: String, CaseIterable, Identifiable {
         switch self { case .all: true; case .work: category == "work"; case .personal: category == "private"; case .other: category != "work" && category != "private" }
     }
 }
+enum PlannerKind: String, CaseIterable, Identifiable {
+    case all = "すべて", event = "予定", task = "具体的タスク", idea = "やりたいこと", errand = "細々した用事", unspecified = "種別未設定"
+    var id: Self { self }
+    var wireValue: String? {
+        switch self { case .event: "event"; case .task: "task"; case .idea: "idea"; case .errand: "errand"; default: nil }
+    }
+    static func classify(_ value: String?) -> Self {
+        allCases.first { $0.wireValue != nil && $0.wireValue == value } ?? .unspecified
+    }
+}
+
+enum PlannerStatus: String, CaseIterable, Identifiable {
+    case all = "すべて", todo = "未着手", active = "進行中", held = "保留中", thinking = "考え中", completed = "完了", other = "その他の状態"
+    var id: Self { self }
+    static func classify(_ value: String?, completed: Bool) -> Self {
+        if completed { return .completed }
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "未着手", "todo", "未完了": return .todo
+        case "進行中", "着手中", "in_progress": return .active
+        case "保留", "保留中", "pending": return .held
+        case "考え中", "検討中": return .thinking
+        default: return .other
+        }
+    }
+}
+
 // Display metadata only. AI context is deliberately absent; this never enters TaskItem/SwiftData.
 struct PlannerTaskMetadata: Equatable {
     let category: String
@@ -50,7 +76,8 @@ struct PlannerTaskMetadata: Equatable {
     let deadlineDay: String?
     let deadlineTime: String?
     let timeZone: String?
-    var isDeferred: Bool { ["保留", "考え中", "検討中", "統合済み", "統合済"].contains(status) }
+    var taskKind: String? = nil
+    var isDeferred: Bool { ["保留中", "保留", "考え中", "検討中", "統合済み", "統合済"].contains(status) }
     var deadlineText: String? {
         deadlineDay.map { $0.replacingOccurrences(of: "-", with: "/") + (deadlineTime.map { " " + $0 } ?? "") + (deadlineTime == nil ? "" : timeZone.map { " (" + $0 + ")" } ?? "") }
     }
@@ -71,6 +98,9 @@ struct TaskProjectGroup: Identifiable {
     @Published private(set) var tasks: [TaskItem] = []
     @Published var selectedSection = TaskListSection.today
     @Published var area = PlannerArea.all
+    @Published var kind = PlannerKind.all
+    @Published var status = PlannerStatus.all
+    @Published var searchesAllTasks = true
     @Published private(set) var plannerMetadata: [UUID: PlannerTaskMetadata] = [:]
     @Published private(set) var completionUndoTask: TaskItem?
     @Published private(set) var isUndoingCompletion = false
@@ -112,34 +142,59 @@ struct TaskProjectGroup: Identifiable {
 
     @Published private(set) var operationError: String?
     var visibleTasks: [TaskItem] {
-        let categorized = tasks.filter { matches($0, section: selectedSection) && area.matches(plannerMetadata[$0.id]?.category ?? "other") }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let globalSearch = !query.isEmpty && searchesAllTasks
+        let categorized = tasks.filter {
+            globalSearch || (matches($0, section: selectedSection) && area.matches(plannerMetadata[$0.id]?.category ?? "other")
+                && (kind == .all || kind == PlannerKind.classify(plannerMetadata[$0.id]?.taskKind))
+                && (status == .all || status == displayedStatus(for: $0)))
+        }
         let projectFiltered = categorized.filter { task in
-            switch projectFilter {
+            if globalSearch { return true }
+            return switch projectFilter {
             case .all: true
             case .unassigned: task.projectID == nil
             case .project(let id): task.projectID == id
             }
         }
         let filtered = projectFiltered.filter { task in
-            guard let priority = priorityFilter.priority else { return true }
+            guard !globalSearch, let priority = priorityFilter.priority else { return true }
             return task.priority == priority
         }
         let tagFiltered = filtered.filter { task in
-            switch tagFilter {
+            if globalSearch { return true }
+            return switch tagFilter {
             case .all: true
             case .untagged: task.tags.isEmpty
             case .tag(let id): task.tags.contains { $0.id == id }
             }
         }
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return tagFiltered.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || $0.note.localizedCaseInsensitiveContains(query) || $0.tags.contains { $0.name.localizedCaseInsensitiveContains(query) } }
+        return tagFiltered.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || $0.note.localizedCaseInsensitiveContains(query) || $0.tags.contains { $0.name.localizedCaseInsensitiveContains(query) } || projectName(for: $0).localizedCaseInsensitiveContains(query) }
             .sorted { lhs, rhs in
                 if settingsStore.completedTasksAtBottom, lhs.isCompleted != rhs.isCompleted { return !lhs.isCompleted }
                 return areInIncreasingOrder(lhs, rhs)
             }
     }
+    private func projectName(for task: TaskItem) -> String {
+        plannerMetadata[task.id]?.projectName ?? projects.first { $0.id == task.projectID }?.name ?? ""
+    }
+    func displayedStatus(for task: TaskItem) -> PlannerStatus {
+        PlannerStatus.classify(plannerMetadata[task.id]?.status, completed: task.isCompleted)
+    }
+    func statusLabel(for task: TaskItem) -> String {
+        let value = displayedStatus(for: task)
+        if value != .other { return value.rawValue }
+        let original = plannerMetadata[task.id]?.status ?? ""
+        if original == "完了" { return "未完了（工程: 完了）" }
+        return original.isEmpty ? "状態未設定" : original
+    }
+    func kindLabel(for task: TaskItem) -> String {
+        PlannerKind.classify(plannerMetadata[task.id]?.taskKind).rawValue
+    }
+    func selectKind(_ value: PlannerKind) { kind = value; selectedSection = .all }
+    func selectStatus(_ value: PlannerStatus) { status = value; selectedSection = .all }
     var emptyMessage: String {
-        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && priorityFilter == .all && projectFilter == .all && tagFilter == .all && area == .all ? selectedSection.emptyMessage : "条件に一致するタスクはありません"
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && priorityFilter == .all && projectFilter == .all && tagFilter == .all && area == .all && kind == .all && status == .all ? selectedSection.emptyMessage : "条件に一致するタスクはありません"
     }
     var availableTags: [AppTag] {
         var seen = Set<UUID>()

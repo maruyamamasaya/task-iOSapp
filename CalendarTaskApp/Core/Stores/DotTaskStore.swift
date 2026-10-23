@@ -70,7 +70,7 @@ import Combine
                     date: incoming.date, dateLabel: incoming.dateLabel, status: incoming.status,
                     details: incoming.details, category: incoming.category,
                     subcategory: incoming.subcategory, parentId: incoming.parentId,
-                    aiContext: incoming.aiContext, startTime: incoming.startTime, endTime: incoming.endTime,
+                    taskKind: incoming.taskKind, aiContext: incoming.aiContext, startTime: incoming.startTime, endTime: incoming.endTime,
                     timeZone: incoming.timeZone, deadlineDate: incoming.deadlineDate, deadlineTime: incoming.deadlineTime)
             } else { records.append(incoming) }
         }

@@ -15,6 +15,7 @@ public struct WireTask: Codable, Equatable, Sendable {
     public var status: String
     public var details: String
     public var category: String
+    public var taskKind: String?
     public var subcategory: String?
     public var parentId: String?
     public var completed: Bool
@@ -42,7 +43,8 @@ public struct WireTask: Codable, Equatable, Sendable {
                 category: String, subcategory: String? = nil, parentId: String? = nil, completed: Bool, revision: Int,
                 project: WireReference? = nil, tags: [WireReference]? = nil, reminderAt: String? = nil,
                 aiContext: String? = nil, startTime: String? = nil, endTime: String? = nil,
-                timeZone: String? = nil, deadlineDate: String? = nil, deadlineTime: String? = nil) {
+                timeZone: String? = nil, deadlineDate: String? = nil, deadlineTime: String? = nil, taskKind: String? = nil) {
+        self.taskKind = taskKind
         self.id = id; self.title = title; self.date = date; self.dateLabel = dateLabel; self.status = status
         self.details = details; self.category = category; self.subcategory = subcategory; self.parentId = parentId
         self.completed = completed; self.revision = revision

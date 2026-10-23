@@ -12,7 +12,7 @@
 
 ## タスクデータ作成・更新の共通手順
 
-1. 現行CLIスキーマと[入力仕様](../Integrations/DotLocalBridge/DOT-TASK-FORMAT.md)を確認する。更新可能項目は `title/date/dateLabel/status/details/aiContext/category/subcategory/parentId/completed/project/tags/reminderAt/startTime/endTime/timeZone/deadlineDate/deadlineTime`。id/revisionは変更JSONに入れず安定slugとexpected revisionを使う。
+1. 現行CLIスキーマと[入力仕様](../Integrations/DotLocalBridge/DOT-TASK-FORMAT.md)を確認する。更新可能項目は `title/date/dateLabel/status/details/aiContext/category/subcategory/parentId/completed/project/tags/reminderAt/startTime/endTime/timeZone/deadlineDate/deadlineTime/taskKind`。id/revisionは変更JSONに入れず安定slugとexpected revisionを使う。
 2. 操作直前に `pending` と `read` で最新revision・受信保留・重複・既存分類を確認する。`read` は中断した受信操作の回復とDB投影を伴うため、厳密な読取り限定では正本を変更しない隔離コピー等を使う。端末の未送信操作がある同じタスクを黙って更新しない。
 3. project/tagsは正本内の実在するUUID/name参照を再利用する。サンプルUUIDを使わず、同じIDの名前不一致や重複を拒否する。新規分類は本人依頼または明示委任された整理範囲内で必要最小限だけ生成し、Gitリポジトリ対応を推測しない。parentIdはproject UUIDとは別の従来参照である。
 4. 変更前の正本・受信箱の整合した復元用コピーと差分JSONを所有者専用で保持する。正式CLIのcreate/updateだけで一件ずつ保存する。省略した属性は保持する。競合・未反映操作は強制上書きしない。
@@ -37,6 +37,14 @@
 - 日付のみは終日、時刻付きは指定zoneの開始日時を既存TaskItemへ投影。終了と固定期限は人向け詳細にも明示する。native SwiftData schemaを増やさず、Dotの名前・日程・本文整理はMac正本側、iPhone更新は完了操作のみ。
 - タスクタブの初期表示は今日から7暦日の「今週」。大分類切替、プロジェクト集約、次の一歩、仮枠/希望日と固定期限の別表示。保留・検討中・統合済み・完了は週から除外する。従来の全件・日付別・タグ絞込みは残す。
 - 完了/取消のUUIDを保持し、古い保存結果・古い表示ボタンで別の対象を取消さない。端末保存通知からStoreとWidget共有投影を更新する。Widget実描画の時刻はOS管理。
+
+## 種別・状態・検索（2026-10-23）
+
+- 種別は任意の`taskKind`。`event`=予定、`task`=具体的タスク、`idea`=やりたいこと（未具体化・順次）、`errand`=細々した用事。省略/nullは種別未設定。日付・期限・タイトルから推測分類せず、既存タスクの一括再分類はしない。更新は正規CLIでexpected revisionを使う。稼働中継がこの項目に対応してから運用する。
+- 状態は種別と独立。表示はcompleted=trueを完了として優先し、未完了の「保留/保留中」「考え中/検討中」等を同じフィルターで扱う。工程statusは正本に保持し、完了/取消に伴って工程を勝手に書き換えない。未知の工程は「その他の状態」で元の文言を残す。
+- タスク画面の種別・状態切替は同じStoreを参照し、選択時は表示対象を「すべて」へ戻す。仕事/私用/その他・project/tag条件は組合せ可能。行に種別と状態を表示。未設定の分類を含め全件で検索可能。
+- 検索中は初期状態で「全体から検索」。今週/種別/状態/大分類/project/tag/優先度条件を跨いでタイトル・人向け詳細・project名・tag名を検索する。スイッチを切ると表示条件内の検索になる。AI補足は検索・通常表示へ出さない。Calendarの既存予定、今日の見通しはそれぞれ従来の画面に保持する。
+- taskKindはDot独立JSON/転送/端末キャッシュの任意属性。TaskItem/SwiftData/バックアップschema、完了操作ID/payload/競合/確認応答は変更しない。Widgetは従来の投影を読み、種別から日程や完了を変更しない。
 
 ## 現在地・未確認
 

@@ -17,6 +17,7 @@ struct DotTaskFeedDecoder {
         let category: String
         let subcategory: String?
         let parentId: String?
+        let taskKind: String?
         let aiContext: String?
         let startTime: String?
         let endTime: String?
@@ -46,12 +47,12 @@ struct DotTaskFeedDecoder {
                                 status: row.status, details: row.details, category: row.category,
                                 completed: row.status == "完了", revision: 1,
                                 aiContext: row.aiContext, startTime: row.startTime, endTime: row.endTime,
-                                timeZone: row.timeZone, deadlineDate: row.deadlineDate, deadlineTime: row.deadlineTime)
+                                timeZone: row.timeZone, deadlineDate: row.deadlineDate, deadlineTime: row.deadlineTime, taskKind: row.taskKind)
             guard wire.hasValidSchedule else { throw DotTaskError.invalidFeed }
             return DotTaskRecord(id: UUID(), slug: row.id, title: row.title, date: row.date,
                 dateLabel: row.dateLabel, status: row.status, details: row.details, category: row.category,
                 subcategory: row.subcategory, parentId: row.parentId,
-                aiContext: row.aiContext, startTime: row.startTime, endTime: row.endTime,
+                taskKind: row.taskKind, aiContext: row.aiContext, startTime: row.startTime, endTime: row.endTime,
                 timeZone: row.timeZone, deadlineDate: row.deadlineDate, deadlineTime: row.deadlineTime)
         }
         return DotTaskFeed(updatedAt: document.updatedAt, tasks: tasks)

@@ -17,6 +17,23 @@ class CanonicalTests(Fixture, unittest.TestCase):
         super().setUp()
         self.source = CanonicalBridge(self.root/'bridge.sqlite', 'test-bridge', self.dot)
 
+    def test_kind_survives_completion_retry_and_legacy_stays_unset(self):
+        self.assertNotIn('taskKind', self.source.feed()['tasks'][0])
+        self.source.update(TASK['id'], 1, {'taskKind':'idea', 'status':'保留中'})
+        op = {**self.operation(), 'expectedRevision':2}
+        receipt = self.source.receive(op)
+        row = CanonicalBridge(self.root/'bridge.sqlite', 'test-bridge', self.dot).feed()['tasks'][0]
+        self.assertEqual(row['taskKind'], 'idea')
+        self.assertEqual(row['status'], '保留中')
+        self.assertTrue(row['completed'])
+        self.assertEqual(self.source.receive(op), receipt)
+        before = self.dot.read_bytes()
+        for kind in ['unknown', 1, [], {}]:
+            with self.assertRaises(BridgeError): self.source.update(TASK['id'], 3, {'taskKind':kind})
+            self.assertEqual(self.dot.read_bytes(), before)
+        self.source.update(TASK['id'], 3, {'taskKind':None})
+        self.assertIsNone(self.source.feed()['tasks'][0].get('taskKind'))
+
     def test_schedule_and_ai_survive_apply_restart(self):
         fields = {'details': '次の一歩', 'aiContext': '元の出典・履歴', 'date': '2026-10-24',
                   'startTime': '10:00', 'endTime': '10:30', 'timeZone': 'Asia/Tokyo',

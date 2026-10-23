@@ -374,6 +374,33 @@ private actor WeekProjects: ProjectRepository {
             dateProvider: FixedDateProvider(now: now ?? day(0)), metadataSource: { metadata })
         m.selectedSection = .week; return m
     }
+    func testKindsStatusesAndGlobalProjectSearchShareRows() async {
+        let held = row("合成の検討", offset:nil), active = row("合成の用事", offset:0)
+        var done = row("合成の完了", offset:0); done.isCompleted = true
+        var heldMeta = meta("other", status:"保留中", project:"合成案件"); heldMeta.taskKind = "idea"
+        var activeMeta = meta(status:"進行中"); activeMeta.taskKind = "errand"
+        let m = model([held,active,done], metadata:[held.id:heldMeta,active.id:activeMeta,done.id:meta(status:"考え中")])
+        await m.load()
+        m.selectKind(.idea); XCTAssertEqual(m.visibleTasks.map(\.id), [held.id])
+        m.selectStatus(.held); XCTAssertEqual(m.visibleTasks.map(\.id), [held.id])
+        m.selectKind(.all); m.selectStatus(.completed)
+        XCTAssertEqual(m.visibleTasks.map(\.id), [done.id])
+        XCTAssertEqual(m.statusLabel(for:done), "完了")
+        XCTAssertEqual(m.kindLabel(for:done), "種別未設定")
+        m.area = .work; m.kind = .errand; m.selectedSection = .week
+        m.searchText = "合成案件"
+        XCTAssertEqual(m.visibleTasks.map(\.id), [held.id])
+        m.searchesAllTasks = false; XCTAssertTrue(m.visibleTasks.isEmpty)
+        XCTAssertEqual(PlannerStatus.classify("保留",completed:false), .held)
+        XCTAssertEqual(PlannerStatus.classify("検討中",completed:false), .thinking)
+        XCTAssertEqual(PlannerStatus.classify("回答待ち",completed:false), .other)
+        XCTAssertEqual(PlannerStatus.classify("完了",completed:false), .other)
+        var inconsistent = heldMeta; inconsistent = PlannerTaskMetadata(category:"other",status:"完了",projectName:nil,scheduleLabel:"",deadlineDay:nil,deadlineTime:nil,timeZone:nil)
+        let legacy = model([held],metadata:[held.id:inconsistent]); await legacy.load()
+        XCTAssertEqual(legacy.statusLabel(for:held), "未完了（工程: 完了）")
+        XCTAssertEqual(PlannerKind.classify(nil), .unspecified)
+        XCTAssertEqual(PlannerKind.classify("future-kind"), .unspecified)
+    }
     func testSevenDayBoundariesExcludeDeferredCompletedAndMerged() async {
         let first = row("先頭", offset: 0), last = row("末尾", offset: 6), before = row("昨日", offset: -1), after = row("次週", offset: 7)
         let held = row("保留", offset: 0), considering = row("検討", offset: 0), merged = row("【統合済】参照", offset: 0)
