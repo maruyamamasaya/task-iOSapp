@@ -43,7 +43,7 @@ Repository をラップする共有 application state。ロードと CRUD 後の
 - SwiftData: Task、CalendarEvent、DailyNote、TaskCompletion、Project、Tag の各 Repository。
 - Store: Task、Calendar、DailyNote、TaskCompletion、Project、Settings。
 - Service: system date、UserNotifications、haptic、Widget refresh、backup。
-- Root UI: Today (Home)、Calendar、Tasks、Settings の四つの Tab と各 `NavigationStack`。
+- Root UI: Tasks、Calendar、WBS、Gantt、Settings の五つの Tab と各 `NavigationStack`。Today (Home) はTasks右上から開く。WBS／ガントはプロジェクト選択画面を入口とし、選択したプロジェクトのFeature内の画面ローカルdraftによるプレビューを開く。Repository／保存schemaには接続しない。
 
 主要な書き込みは `View → ViewModel → Store → Repository` と進み、Repository が SwiftData を保存する。Store は成功後に通知を同期し、該当する操作では `WidgetCenter` の timeline reload を要求してから状態を再取得する。
 

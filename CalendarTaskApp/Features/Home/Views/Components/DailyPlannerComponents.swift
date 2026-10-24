@@ -162,7 +162,7 @@ struct UnscheduledTasksSection: View {
     let toggle: (TaskItem) -> Void
     let actions: TaskRowActions
     var add: (() -> Void)? = nil
-    @State private var isExpanded = false
+    @State private var isExpanded = true
     var body: some View {
         PlannerSection(title: "やること", symbol: "checklist") {
             DisclosureGroup(isExpanded: $isExpanded) {

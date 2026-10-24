@@ -64,15 +64,24 @@ Dotタスクを作成・更新する前に、必ず [docs/dot-task-integration.m
 
 - ロジック変更には同じレイヤーの unit test を追加する。Repository は CRUD と変換、Store は状態と副作用、parser / date / recurrence は境界値をテストする。
 - DI 可能性を保ち、テストで本番 SwiftData singleton、通知権限、WidgetCenter に依存させない。
-- 実装後は最低限 `xcodebuild -project CalendarTaskApp.xcodeproj -scheme CalendarTaskApp -sdk iphonesimulator build` を実行する。変更内容の確認にビルドだけで十分なら `xcodebuild test` は実行しない。変更対象が Widget なら Widget target も build する。
+- 実装後は最低限 `xcodebuild -project CalendarTaskApp.xcodeproj -scheme CalendarTaskApp -sdk iphonesimulator -destination 'platform=iOS Simulator,id=EB3A49ED-6553-4D7E-B933-387951643EAB' build` を実行する。変更内容の確認にビルドだけで十分なら `xcodebuild test` は実行しない。変更対象が Widget なら Widget target も同じ destination で build する。
 - UI変更時は Home / Calendar / Tasks / Settings、作成・編集・削除、QuickAdd、空状態とエラー状態を該当範囲で目視確認する。永続化変更時は再起動後の読込、移行、バックアップ、Widget共有を確認する。
 - `git diff` でスコープ外変更がないことも確認する。
 
 実機オフライン操作は毎回の更新条件にしない。同期/outbox/再送/競合の実質変更や関連不具合時の回帰範囲は `docs/dot-task-integration.md` の現行運用に従う。
 
+### このMacでの開発端末の固定（2026-10-23）
+
+- iOSアプリのシミュレータービルド・起動・テストは、既存の **iPhone 17e / iOS 26.5 / UDID `EB3A49ED-6553-4D7E-B933-387951643EAB`** に統一する。
+- `xcodebuild` では常に `-destination 'platform=iOS Simulator,id=EB3A49ED-6553-4D7E-B933-387951643EAB'` を指定する。`simctl` による起動・インストール・実行でもこのUDIDを明示し、`booted` や端末名だけによる暗黙の選択は避ける。
+- 実行前に既存端末とランタイムの利用可否を確認する。指定端末が見つからない、利用できない、またはXcode・プロジェクトとの互換性に問題がある場合は、代替端末を作成・選択せず、理由と必要な対応を報告する。
+- 別のシミュレーター端末の作成・複製、およびOSランタイムの追加・更新を自動で行わない。並列テストによる端末の複製も避ける。
+- 実機確認が必要な場合は、接続されている **iPhone 12 mini・iPhone 13・iPhone 17e** を利用する。実際の接続先を確認して指定し、利用できない場合は報告する。
+- 既存シミュレーター内のアプリやテストデータは、明示的な依頼なく初期化・削除しない。端末のerase・削除やアプリのアンインストールを、検証や不具合回避のために自動実行しない。
+
 ### Xcode のストレージ管理
 
-- テストが必要な場合は、既存の Simulator を1台だけ使用する。新しい Simulator、テスト端末、ランタイムを必要なく作成・ダウンロードしない。
+- テストが必要な場合は、上記UDIDの既存Simulatorを1台だけ使用する。新しいSimulator、テスト端末、ランタイムを自動で作成・ダウンロードしない。
 - テストでは並列実行を無効にし、`-parallel-testing-enabled NO` と `-maximum-parallel-testing-workers 1` を指定する。同じテストを理由なく繰り返さない。
 - テスト開始前に `~/Library/Developer/XCTestDevices` の既存フォルダ一覧と容量を記録する。
 - テスト完了後、そのタスクによって新規作成された `XCTestDevices` 内の UUID フォルダだけを削除する。以前から存在するデータは削除しない。

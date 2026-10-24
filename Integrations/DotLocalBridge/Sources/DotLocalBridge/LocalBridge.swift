@@ -185,6 +185,7 @@ public actor LocalBridgeStore {
     private let bridgeID: String
     private var automaticTransport: (any BridgeTransport)?
     private var synchronizing = false
+    public private(set) var lastSuccessfulSyncAt: Date?
     private var synchronizeAgain = false
     private var observers: [UUID: AsyncStream<BridgeSnapshot>.Continuation] = [:]
     public func changes() -> AsyncStream<BridgeSnapshot> {
@@ -398,5 +399,6 @@ public actor LocalBridgeStore {
                 try accept(try await transport.receipt(for: pending.operation.operationId))
             }
         }
+        lastSuccessfulSyncAt = .now
     }
 }

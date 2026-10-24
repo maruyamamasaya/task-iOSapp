@@ -20,6 +20,7 @@
 		2FD418EE5FB364B0004EA5A4 /* CalendarTaskApp/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C69D5D9F05E369A386429544 /* CalendarTaskApp/Resources/Assets.xcassets */; };
 		31DEABE3D39D2824F2CF525A /* CalendarTaskApp/App/CalendarTaskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB8F6818E2876E6A42FB3B0 /* CalendarTaskApp/App/CalendarTaskApp.swift */; };
 		39B413FDA29E5B4DC0776DD1 /* CalendarTaskApp/Features/Home/Views/HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC0DA443DA4C9393AF24426 /* CalendarTaskApp/Features/Home/Views/HomeView.swift */; };
+		E02300000000000000000001 /* CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02300000000000000000002 /* CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift */; };
 		3C5896BA19A39AE51942251B /* CalendarTaskApp/App/AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F75C43EA68FD7459621598B /* CalendarTaskApp/App/AppDependencies.swift */; };
 		3D72AABAC0CB7C8AA7A4A44B /* CalendarTaskApp/Features/Calendar/Views/MonthCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49CF2EBA3536046EC015879B /* CalendarTaskApp/Features/Calendar/Views/MonthCalendarView.swift */; };
 		3ED73344354C1A73B779ED8F /* CalendarTaskApp/Data/Repositories/InMemoryTaskRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A922E2B8576C7511FC4D36C1 /* CalendarTaskApp/Data/Repositories/InMemoryTaskRepository.swift */; };
@@ -69,6 +70,7 @@
 		AA0000000000000000000030 /* CalendarTaskAppTests/TaskStoreActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000030 /* CalendarTaskAppTests/TaskStoreActionTests.swift */; };
 		AA0000000000000000000031 /* CalendarTaskApp/Features/Settings/Views/SettingsSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000031 /* CalendarTaskApp/Features/Settings/Views/SettingsSections.swift */; };
 		AA0000000000000000000032 /* CalendarTaskAppTests/SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000032 /* CalendarTaskAppTests/SettingsStoreTests.swift */; };
+		E02300000000000000000003 /* CalendarTaskAppTests/ProjectPlanningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02300000000000000000004 /* CalendarTaskAppTests/ProjectPlanningTests.swift */; };
 		AA0000000000000000000033 /* CalendarTaskApp/Core/Backup/BackupModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000033 /* CalendarTaskApp/Core/Backup/BackupModels.swift */; };
 		AA0000000000000000000034 /* CalendarTaskApp/Core/Backup/BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000034 /* CalendarTaskApp/Core/Backup/BackupService.swift */; };
 		AA0000000000000000000035 /* CalendarTaskAppTests/BackupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000035 /* CalendarTaskAppTests/BackupServiceTests.swift */; };
@@ -178,6 +180,7 @@
 		90C3A924BE1CF544654C2C24 /* CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift; sourceTree = SOURCE_ROOT; };
 		995AEC85B1607EF8F7EEF8F4 /* CalendarTaskApp/Core/Repositories/CalendarRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Repositories/CalendarRepository.swift; sourceTree = SOURCE_ROOT; };
 		9BC0DA443DA4C9393AF24426 /* CalendarTaskApp/Features/Home/Views/HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Home/Views/HomeView.swift; sourceTree = SOURCE_ROOT; };
+		E02300000000000000000002 /* CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift; sourceTree = SOURCE_ROOT; };
 		A6E83CBB3BA467BFCA77A293 /* CalendarTaskApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = CalendarTaskApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A922E2B8576C7511FC4D36C1 /* CalendarTaskApp/Data/Repositories/InMemoryTaskRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Data/Repositories/InMemoryTaskRepository.swift; sourceTree = SOURCE_ROOT; };
 		A943452917DE7B9C9856CFA2 /* CalendarTaskApp/Core/Extensions/Calendar+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CalendarTaskApp/Core/Extensions/Calendar+Extensions.swift"; sourceTree = SOURCE_ROOT; };
@@ -214,6 +217,7 @@
 		AB0000000000000000000030 /* CalendarTaskAppTests/TaskStoreActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/TaskStoreActionTests.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000031 /* CalendarTaskApp/Features/Settings/Views/SettingsSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Features/Settings/Views/SettingsSections.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000032 /* CalendarTaskAppTests/SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/SettingsStoreTests.swift; sourceTree = SOURCE_ROOT; };
+		E02300000000000000000004 /* CalendarTaskAppTests/ProjectPlanningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/ProjectPlanningTests.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000033 /* CalendarTaskApp/Core/Backup/BackupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Backup/BackupModels.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000034 /* CalendarTaskApp/Core/Backup/BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskApp/Core/Backup/BackupService.swift; sourceTree = SOURCE_ROOT; };
 		AB0000000000000000000035 /* CalendarTaskAppTests/BackupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTaskAppTests/BackupServiceTests.swift; sourceTree = SOURCE_ROOT; };
@@ -323,6 +327,7 @@
 				90C3A924BE1CF544654C2C24 /* CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift */,
 				EA801423E3C098183642722D /* CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift */,
 				9BC0DA443DA4C9393AF24426 /* CalendarTaskApp/Features/Home/Views/HomeView.swift */,
+				E02300000000000000000002 /* CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift */,
 				5CA6B7430C9F340C2C56CD0D /* CalendarTaskApp/Features/Settings/ViewModels/SettingsViewModel.swift */,
 				1FBDFA03F87FB746B591C756 /* CalendarTaskApp/Features/Settings/Views/SettingsView.swift */,
 				51B908C2207642E3571C5A7E /* CalendarTaskApp/Features/Tasks/ViewModels/TaskListViewModel.swift */,
@@ -365,6 +370,7 @@
 				AB0000000000000000000030 /* CalendarTaskAppTests/TaskStoreActionTests.swift */,
 				AB0000000000000000000031 /* CalendarTaskApp/Features/Settings/Views/SettingsSections.swift */,
 				AB0000000000000000000032 /* CalendarTaskAppTests/SettingsStoreTests.swift */,
+				E02300000000000000000004 /* CalendarTaskAppTests/ProjectPlanningTests.swift */,
 				AB0000000000000000000033 /* CalendarTaskApp/Core/Backup/BackupModels.swift */,
 				AB0000000000000000000034 /* CalendarTaskApp/Core/Backup/BackupService.swift */,
 				AB0000000000000000000035 /* CalendarTaskAppTests/BackupServiceTests.swift */,
@@ -545,6 +551,7 @@
 				44747510E210A8684F9894FB /* CalendarTaskApp/Features/Home/ViewModels/HomeViewModel.swift in Sources */,
 				966E3ABDE8D9F5DB8684DA79 /* CalendarTaskApp/Features/Home/Views/Components/TodaySummaryCard.swift in Sources */,
 				39B413FDA29E5B4DC0776DD1 /* CalendarTaskApp/Features/Home/Views/HomeView.swift in Sources */,
+				E02300000000000000000001 /* CalendarTaskApp/Features/Home/Views/Planning/ProjectPlanningView.swift in Sources */,
 				69407A928327D8331686B889 /* CalendarTaskApp/Features/Settings/ViewModels/SettingsViewModel.swift in Sources */,
 				DE02EA925894AE1BF148782D /* CalendarTaskApp/Features/Settings/Views/SettingsView.swift in Sources */,
 				C5E1342F2E8E027BDD669735 /* CalendarTaskApp/Features/Tasks/ViewModels/TaskListViewModel.swift in Sources */,
@@ -598,6 +605,7 @@
 				AA0000000000000000000027 /* CalendarTaskAppTests/ProjectRepositoryTests.swift in Sources */,
 				AA0000000000000000000030 /* CalendarTaskAppTests/TaskStoreActionTests.swift in Sources */,
 				AA0000000000000000000032 /* CalendarTaskAppTests/SettingsStoreTests.swift in Sources */,
+				E02300000000000000000003 /* CalendarTaskAppTests/ProjectPlanningTests.swift in Sources */,
 				AA0000000000000000000035 /* CalendarTaskAppTests/BackupServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

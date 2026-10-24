@@ -24,11 +24,15 @@ struct MonthCalendarView: View {
                         .frame(maxWidth: .infinity).padding(.bottom, 7)
                 }
                 ForEach(dates, id: \.self) { date in
+                    Color.clear
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay {
                     CalendarDayCell(date: date, isToday: settings.highlightToday && isToday(date), isSelected: isSelected(date),
                                     isInDisplayedMonth: isInDisplayedMonth(date), hasEvent: hasEvent(date),
                                     hasIncompleteTask: hasIncompleteTask(date), projectColors: (settings.showProjectColorDots ? projectIDs(date) : []).map { id in
                                         projectStore.project(id: id)?.colorIdentifier.color ?? .secondary
                                     }, select: { select(date) }, centersDayNumber: true)
+                        }
                         .overlay {
                             Rectangle().strokeBorder(settings.theme.appearance(for: colorScheme).mutedInk.opacity(0.16), lineWidth: 0.5)
                                 .allowsHitTesting(false)

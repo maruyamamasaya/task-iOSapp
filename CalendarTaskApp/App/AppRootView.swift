@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppRoute: Hashable { case today, calendar, tasks, settings }
+enum AppRoute: Hashable { case today, calendar, tasks, wbs, gantt, settings }
 
 struct AppRootView: View {
     let dependencies: AppDependencies
@@ -9,24 +9,46 @@ struct AppRootView: View {
     @ObservedObject private var playbackRouter = BriefPlaybackRouter.shared
     @ObservedObject private var notificationRouter = NotificationItemRouter.shared
     @State private var selectedRoute: AppRoute
+    @State private var showsToday = false
+    @State private var showsTaskSearch = false
+    @State private var showsTaskTagSettings = false
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
         _settings = ObservedObject(wrappedValue: dependencies.settingsStore)
         _selectedRoute = State(initialValue: Self.route(for: dependencies.settingsStore.initialTab))
+        _showsToday = State(initialValue: dependencies.settingsStore.initialTab == .today)
     }
     var body: some View {
         TabView(selection: $selectedRoute) {
-            NavigationStack { HomeView(briefStore: dependencies.dailyBriefStore, viewModel: HomeViewModel(taskStore: dependencies.plannerTaskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
-                .tabItem { Label("今日", systemImage: "book.pages") }
-                .tag(AppRoute.today)
-            NavigationStack { CalendarView(viewModel: CalendarViewModel(taskStore: dependencies.plannerTaskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
-                .tabItem { Label("カレンダー", systemImage: "calendar") }
-                .tag(AppRoute.calendar)
             NavigationStack {
-                DotPlannerListView(viewModel: makeDotListModel())
+                DotPlannerListView(viewModel: makeDotListModel(), showsSearch: $showsTaskSearch,
+                                   showsTagSettings: $showsTaskTagSettings)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        DotRelayStatusLabel(cache: dependencies.dotRelayCache, synchronize: {
+                            await dependencies.retryRelay()
+                            await dependencies.plannerTaskStore.load()
+                        })
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                    }
+                    .navigationDestination(isPresented: $showsToday) {
+                        HomeView(briefStore: dependencies.dailyBriefStore,
+                                 viewModel: HomeViewModel(taskStore: dependencies.plannerTaskStore,
+                                                          calendarStore: dependencies.calendarStore,
+                                                          dailyNoteStore: dependencies.dailyNoteStore,
+                                                          taskCompletionStore: dependencies.taskCompletionStore,
+                                                          dateProvider: dependencies.dateProvider,
+                                                          settingsStore: dependencies.settingsStore,
+                                                          hapticService: dependencies.hapticService))
+                    }
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
+                            Button("今日") { showsToday = true }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
                             Menu {
+                                Button("検索", systemImage: "magnifyingglass") { showsTaskSearch = true }
+                                Button("タグ設定", systemImage: "tag") { showsTaskTagSettings = true }
                                 if let store = dependencies.dotTaskStore {
                                     NavigationLink("JSON を読み込む・更新") {
                                         DotTaskListView(viewModel: DotTaskListViewModel(store: store))
@@ -41,6 +63,15 @@ struct AppRootView: View {
             }
                 .tabItem { Label("タスク", systemImage: "checklist") }
                 .tag(AppRoute.tasks)
+            NavigationStack { CalendarView(viewModel: CalendarViewModel(taskStore: dependencies.plannerTaskStore, calendarStore: dependencies.calendarStore, dailyNoteStore: dependencies.dailyNoteStore, taskCompletionStore: dependencies.taskCompletionStore, dateProvider: dependencies.dateProvider, settingsStore: dependencies.settingsStore, hapticService: dependencies.hapticService)) }
+                .tabItem { Label("カレンダー", systemImage: "calendar") }
+                .tag(AppRoute.calendar)
+            NavigationStack { ProjectPlanningProjectListView(mode: .wbs) }
+                .tabItem { Label("WBS", systemImage: "list.bullet.indent") }
+                .tag(AppRoute.wbs)
+            NavigationStack { ProjectPlanningProjectListView(mode: .gantt) }
+                .tabItem { Label("ガント", systemImage: "chart.bar.xaxis") }
+                .tag(AppRoute.gantt)
             NavigationStack { SettingsView(viewModel: SettingsViewModel(store: dependencies.settingsStore, notificationService: dependencies.notificationService), backupService: dependencies.backupService) }
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(AppRoute.settings)
@@ -64,7 +95,7 @@ struct AppRootView: View {
                 await dependencies.retryRelay()
                 await dependencies.plannerTaskStore.load()
                 await dependencies.taskStore.load()
-                do { try await Task.sleep(for: .seconds(15)) } catch { break }
+                do { try await Task.sleep(for: .seconds(dependencies.dotRelayCache.pollingInterval)) } catch { break }
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -77,7 +108,7 @@ struct AppRootView: View {
         .sheet(item: $playbackRouter.request) { BriefPlaybackView(request: $0) }
         .onOpenURL { url in
             guard url.scheme?.lowercased() == "calendartaskapp" else { return }
-            switch url.host?.lowercased() { case "today": selectedRoute = .today; case "calendar": selectedRoute = .calendar; case "tasks": selectedRoute = .tasks; default: break }
+            switch url.host?.lowercased() { case "today": selectedRoute = .tasks; showsToday = true; case "calendar": selectedRoute = .calendar; case "tasks": selectedRoute = .tasks; default: break }
         }
     }
     private func makeDotListModel() -> TaskListViewModel {
@@ -89,7 +120,7 @@ struct AppRootView: View {
         return model
     }
     private var colorScheme: ColorScheme? { switch settings.appearance { case .system: nil; case .light: .light; case .dark: .dark } }
-    static func route(for tab: InitialAppTab) -> AppRoute { switch tab { case .today: .today; case .calendar: .calendar; case .tasks: .tasks } }
+    static func route(for tab: InitialAppTab) -> AppRoute { switch tab { case .today: .tasks; case .calendar: .calendar; case .tasks: .tasks } }
 }
 
 private struct NotificationItemDetailView: View {

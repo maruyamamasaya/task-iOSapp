@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>TaskPilot</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>同じネットワークの Mac と、タスク一覧と完了操作を安全に受け渡すために使います。</string>
 	<key>AppGroupIdentifier</key>

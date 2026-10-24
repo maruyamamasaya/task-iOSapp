@@ -9,7 +9,7 @@ import SwiftUI
         let defaults = UserDefaults(suiteName: suiteName)!
         let store = SettingsStore(defaults: defaults)
         XCTAssertEqual(store.initialTab, .today)
-        XCTAssertEqual(AppRootView.route(for: store.initialTab), .today)
+        XCTAssertEqual(AppRootView.route(for: store.initialTab), .tasks)
         XCTAssertEqual(store.weekStartDay, .monday)
         XCTAssertEqual(store.initialCalendarMode, .month)
         XCTAssertEqual(store.defaultTaskPriority, .normal)
@@ -119,7 +119,7 @@ import SwiftUI
                     Text(theme.rawValue + (scheme == .dark ? " · Dark" : " · Light"))
                         .font(theme.headingFont(.title, for: scheme)).foregroundStyle(palette.ink)
                     Text(palette.subtitle).font(.subheadline).foregroundStyle(palette.mutedInk)
-                    CalendarHeader(month: date, previous: {}, next: {}, today: {})
+                    CalendarHeader(displayMode: .constant(.month), previous: {}, next: {}, today: {})
                     HStack(spacing: 0) {
                         ForEach(0..<7) { index in
                             CalendarDayCell(date: date.addingTimeInterval(Double(index) * 86400),
@@ -166,4 +166,29 @@ import SwiftUI
         }
     }
 
+}
+
+final class RelayPollingScheduleTests: XCTestCase {
+    func testIdlePollsBackOffAndCapAtTwoMinutes() {
+        var schedule = RelayPollingSchedule()
+        XCTAssertEqual(schedule.interval, 15)
+        for expected in [30.0, 60, 120, 120] {
+            schedule.record(success: true, changed: false, hasPendingOperations: false)
+            XCTAssertEqual(schedule.interval, expected)
+        }
+    }
+
+    func testChangesPendingDeliveryFailuresAndForegroundResetRestoreFastPolling() {
+        for reason in 0..<4 {
+            var schedule = RelayPollingSchedule()
+            for _ in 0..<3 { schedule.record(success: true, changed: false, hasPendingOperations: false) }
+            switch reason {
+            case 0: schedule.record(success: true, changed: true, hasPendingOperations: false)
+            case 1: schedule.record(success: true, changed: false, hasPendingOperations: true)
+            case 2: schedule.record(success: false, changed: false, hasPendingOperations: false)
+            default: schedule.reset()
+            }
+            XCTAssertEqual(schedule.interval, 15)
+        }
+    }
 }

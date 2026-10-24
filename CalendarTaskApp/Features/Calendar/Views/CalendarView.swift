@@ -8,10 +8,7 @@ struct CalendarView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                Picker("表示", selection: $viewModel.displayMode) {
-                    ForEach(CalendarDisplayMode.allCases) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.segmented).frame(maxWidth: 220)
-                CalendarHeader(month: viewModel.displayedMonth, title: headerTitle,
+                CalendarHeader(displayMode: $viewModel.displayMode,
                                previous: { Task { await move(by: -1) } },
                                next: { Task { await move(by: 1) } },
                                today: { Task { await viewModel.returnToToday() } })
@@ -20,7 +17,11 @@ struct CalendarView: View {
                                       isToday: viewModel.isToday, isSelected: viewModel.isSelected,
                                       isInDisplayedMonth: viewModel.isInDisplayedMonth,
                                       hasEvent: viewModel.hasEvents, hasIncompleteTask: viewModel.hasIncompleteTasks,
-                                      projectIDs: viewModel.projectIDs) { date in Task { await viewModel.select(date) } }
+                                      projectIDs: viewModel.projectIDs) { date in
+                        Task {
+                            await viewModel.select(date)
+                        }
+                    }
                         .themedSurface(padding: 14)
                     SelectedDaySummaryView(date: viewModel.selectedDate, events: viewModel.selectedEvents,
                                            tasks: viewModel.selectedTasks, note: viewModel.selectedNote,
@@ -32,7 +33,12 @@ struct CalendarView: View {
                                      events: viewModel.events, tasks: viewModel.tasks, timelineItems: viewModel.timelineItems,
                                      isToday: viewModel.isToday, isSelected: viewModel.isSelected,
                                      hasEvent: viewModel.hasEvents, hasTask: viewModel.hasIncompleteTasks,
-                                     projectIDs: viewModel.projectIDs, select: { date in Task { await viewModel.select(date) } },
+                                     projectIDs: viewModel.projectIDs, select: { date in
+                                         Task {
+                                             await viewModel.select(date)
+                                             viewModel.displayMode = .day
+                                         }
+                                     },
                                      taskActions: taskActions, eventActions: eventActions)
                 } else {
                     DayCalendarView(date: viewModel.selectedDate,
@@ -41,16 +47,27 @@ struct CalendarView: View {
                                     note: viewModel.selectedNote, now: viewModel.now, isToday: viewModel.isToday(viewModel.selectedDate),
                                     editNote: { editorRoute = .note(viewModel.selectedNote, viewModel.selectedDate) },
                                     taskActions: taskActions, eventActions: eventActions)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(daySwipeGesture)
                 }
             }.padding(.horizontal, 20).padding(.vertical, 16)
+                .padding(.bottom, 80)
         }
         .themedScreen()
-        .navigationTitle("カレンダー").navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { showsQuickAdd = true } label: { Image(systemName: "bolt") }.accessibilityLabel("クイック追加")
-                AddItemMenu(date: viewModel.selectedDate, route: $editorRoute)
+        .navigationTitle(headerTitle).navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .bottomTrailing) {
+            Button { showsQuickAdd = true } label: {
+                Image(systemName: "bolt.fill")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(.tint, in: Circle())
+                    .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("すばやく書く")
+            .padding(.trailing, 20)
+            .padding(.bottom, 16)
         }
         .sheet(item: $editorRoute) { route in
             EditorHostView(route: route, noteForDate: viewModel.note,
@@ -63,9 +80,19 @@ struct CalendarView: View {
         }
         .task { await viewModel.load() }
     }
-    private var headerTitle: String? {
+    private var daySwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) >= 60, abs(horizontal) > abs(vertical) * 1.5 else { return }
+                Task { await viewModel.moveDay(by: horizontal < 0 ? 1 : -1) }
+            }
+    }
+    private var headerTitle: String {
         switch viewModel.displayMode {
-        case .month: nil
+        case .month:
+            viewModel.displayedMonth.formatted(.dateTime.year().month(.wide).locale(Locale(identifier: "ja_JP")))
         case .week: viewModel.weekTitle
         case .day: viewModel.dayTitle
         }

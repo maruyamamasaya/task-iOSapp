@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import DotLocalBridge
 
 @MainActor struct DotLocalRelayFactory {
@@ -91,12 +92,28 @@ struct DotLocalRelayEntryView: View {
 
 // A single actor per pairing is shared by ordinary screens and the relay panel.
 // This adapter projects into memory; it never inserts relay rows into SwiftData.
-@MainActor final class DotRelayTaskCache {
+// Only successful, unchanged polls back off. Pending delivery and failures keep recovery responsive.
+struct RelayPollingSchedule {
+    private(set) var interval: TimeInterval = 15
+    mutating func reset() { interval = 15 }
+    mutating func record(success: Bool, changed: Bool, hasPendingOperations: Bool) {
+        if !success || changed || hasPendingOperations { reset() }
+        else { interval = min(interval * 2, 120) }
+    }
+}
+
+@MainActor final class DotRelayTaskCache: ObservableObject {
+    @Published private(set) var isConnected = false
+    @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncAt: Date?
+    private var lastSyncKey: String? { namespace.map { "DotRelay.lastSync.\($0)" } }
     private var namespace: String?
     private var cached: LocalBridgeStore?
     var onChange: (@MainActor () async -> Void)?
     private var observation: Task<Void, Never>?
     private var active = false
+    private var pollingSchedule = RelayPollingSchedule()
+    var pollingInterval: TimeInterval { pollingSchedule.interval }
     private var automaticTransport: (any BridgeTransport)?
     init(store: LocalBridgeStore? = nil) {
         if let store { namespace = "injected"; cached = store; observe(store) }
@@ -106,27 +123,51 @@ struct DotLocalRelayEntryView: View {
         observation?.cancel()
         observation = Task { [weak self] in
             let changes = await value.changes()
-            for await _ in changes {
+            var previous: BridgeSnapshot?
+            for await snapshot in changes {
                 guard !Task.isCancelled, let self else { break }
+                if let previous, previous != snapshot { self.pollingSchedule.reset() }
+                previous = snapshot
                 await self.onChange?()
             }
         }
     }
     func stopAutomaticDelivery() {
+        isConnected = false
         automaticTransport?.cancelRequests()
         automaticTransport = nil
         if let cached { Task { await cached.setAutomaticTransport(nil) } }
     }
     func setActive(_ value: Bool) async {
+        pollingSchedule.reset()
         active = value
+        if !value { isConnected = false }
         guard let store = try? store() else { return }
         automaticTransport?.cancelRequests()
         automaticTransport = value ? (try? KeychainRelayPairing().load()?.transport()) : nil
         await store.setAutomaticTransport(automaticTransport)
     }
     func retry() async {
-        guard active, let store = try? store(), let automaticTransport else { return }
-        try? await store.synchronize(using: automaticTransport)
+        guard !isSyncing else { return }
+        guard active, let store = try? store(), let automaticTransport else { isConnected = false; return }
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            let before = await store.snapshot
+            let previousSync = await store.lastSuccessfulSyncAt
+            try await store.synchronize(using: automaticTransport)
+            guard active, self.automaticTransport != nil, !Task.isCancelled else { return }
+            guard let completedAt = await store.lastSuccessfulSyncAt, completedAt != previousSync else { return }
+            let after = await store.snapshot
+            pollingSchedule.record(success: true, changed: before != after,
+                                   hasPendingOperations: after.outbox.contains { $0.state != "conflict" })
+            isConnected = true
+            lastSyncAt = completedAt
+            if let lastSyncKey { UserDefaults.standard.set(lastSyncAt, forKey: lastSyncKey) }
+        } catch {
+            isConnected = false
+            pollingSchedule.reset()
+        }
     }
     func store() throws -> LocalBridgeStore {
         if namespace == "injected", let cached { return cached }
@@ -137,9 +178,52 @@ struct DotLocalRelayEntryView: View {
         stopAutomaticDelivery()
         let value = try LocalBridgeStore(file: URL.applicationSupportDirectory.appending(path: relative), bridgeID: key)
         namespace = key; cached = value
+        lastSyncAt = lastSyncKey.flatMap { UserDefaults.standard.object(forKey: $0) as? Date }
         observe(value)
         return value
     }
+}
+
+struct DotRelayStatusLabel: View {
+    @ObservedObject var cache: DotRelayTaskCache
+    let synchronize: @MainActor () async -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "desktopcomputer")
+                Circle().fill(cache.isConnected ? Color.green : Color.gray).frame(width: 7, height: 7)
+                Text(cache.isConnected ? "Mac接続中" : "Mac未接続")
+            }
+            .font(.caption)
+            .fixedSize()
+            if let date = cache.lastSyncAt {
+                ViewThatFits(in: .horizontal) {
+                    Text("最終同期 \(date.formatted(.dateTime.month().day().hour().minute()))")
+                        .fixedSize()
+                    Text("同期 \(date.formatted(date: .omitted, time: .shortened))")
+                        .fixedSize()
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            } else {
+                Text("最終同期 —").font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button {
+                Task { await synchronize() }
+            } label: {
+                Group {
+                    if cache.isSyncing { ProgressView() }
+                    else { Label("同期", systemImage: "arrow.triangle.2.circlepath") }
+                }
+                .font(.caption)
+                .frame(minWidth: 44, minHeight: 44)
+            }
+            .disabled(cache.isSyncing)
+            .accessibilityLabel("Macと同期")
+        }
+    }
+
 }
 
 @MainActor final class DotRelayTaskRepository: TaskRepository {

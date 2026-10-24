@@ -5,6 +5,7 @@ import SwiftData
 @MainActor final class AppDependencies: ObservableObject {
     let relayActivity: @MainActor (Bool) async -> Void
     let retryRelay: @MainActor () async -> Void
+    let dotRelayCache: DotRelayTaskCache
     let dotLocalRelayFactory: DotLocalRelayFactory
     let runApprovedOverdueMove: @MainActor () async -> Void
     let dotTaskStore: DotTaskStore?
@@ -29,6 +30,7 @@ import SwiftData
         self.dotTaskStore = dotTaskStore
         let settingsStore = settingsStore ?? SettingsStore()
         let relayCache = dotRelayCache ?? DotRelayTaskCache()
+        self.dotRelayCache = relayCache
         relayActivity = { await relayCache.setActive($0) }
         retryRelay = { await relayCache.retry() }
         let combinedRepository = DotRelayTaskRepository(native: taskRepository, cache: relayCache)

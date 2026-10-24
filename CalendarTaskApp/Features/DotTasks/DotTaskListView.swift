@@ -89,8 +89,27 @@ struct DotTaskListView: View {
 
 struct DotPlannerListView: View {
     @StateObject var viewModel: TaskListViewModel
+    @Binding var showsSearch: Bool
+    @Binding var showsTagSettings: Bool
+    @FocusState private var searchFocused: Bool
     var body: some View {
         VStack(spacing: 0) {
+            if showsSearch {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("タスク名・詳細・タグを検索", text: $viewModel.searchText)
+                        .focused($searchFocused)
+                        .submitLabel(.search)
+                    Button("閉じる") {
+                        viewModel.searchText = ""
+                        showsSearch = false
+                    }
+                }
+                .padding(12)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
             if viewModel.selectedSection == .week {
                 HStack {
                     Text(!viewModel.searchText.isEmpty && viewModel.searchesAllTasks ? "全体検索" : "今週").font(.headline)
@@ -101,22 +120,6 @@ struct DotPlannerListView: View {
                 }
                     .padding(.horizontal, 16).padding(.top, 8)
             }
-            Picker("大分類", selection: $viewModel.area) {
-                ForEach(PlannerArea.allCases) { Text($0.rawValue).tag($0) }
-            }.pickerStyle(.segmented).padding(.horizontal, 16).padding(.vertical, 8)
-            HStack {
-                Menu {
-                    ForEach(PlannerKind.allCases) { value in
-                        Button(value.rawValue) { viewModel.selectKind(value) }
-                    }
-                } label: { Label("種別: " + viewModel.kind.rawValue, systemImage: "square.grid.2x2") }
-                Spacer()
-                Menu {
-                    ForEach(PlannerStatus.allCases) { value in
-                        Button(value.rawValue) { viewModel.selectStatus(value) }
-                    }
-                } label: { Label("状態: " + viewModel.status.rawValue, systemImage: "line.3.horizontal.decrease.circle") }
-            }.font(.subheadline).padding(.horizontal, 16).frame(minHeight: 44)
             controls
             if !viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Toggle("全体から検索", isOn: $viewModel.searchesAllTasks)
@@ -169,51 +172,75 @@ struct DotPlannerListView: View {
         }
         .themedScreen()
         .navigationTitle("タスク")
-        .searchable(text: $viewModel.searchText, prompt: "タスク名・詳細・タグを検索")
-        .task { await viewModel.load() }
-    }
-    private var controls: some View {
-        HStack {
-            Menu {
-                Section("表示対象") {
-                    Picker("表示対象", selection: $viewModel.selectedSection) {
-                        ForEach(TaskListSection.allCases) { section in Text(section.rawValue).tag(section) }
-                    }
-                }
-                Section("優先度") {
-                    Picker("優先度", selection: $viewModel.priorityFilter) {
-                        ForEach(TaskPriorityFilter.allCases) { Text("優先度: " + $0.rawValue).tag($0) }
-                    }
-                }
-            } label: {
-                Label(viewModel.selectedSection.rawValue + (viewModel.priorityFilter == .all ? "" : "・" + viewModel.priorityFilter.rawValue),
-                      systemImage: "line.3.horizontal.decrease")
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            Menu {
-                Picker("プロジェクト", selection: $viewModel.projectFilter) {
-                    Text("すべてのプロジェクト").tag(TaskProjectFilter.all)
-                    Text("プロジェクトなし").tag(TaskProjectFilter.unassigned)
-                    ForEach(viewModel.projects) { project in Text(project.name).tag(TaskProjectFilter.project(project.id)) }
-                }
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: showsSearch) { _, visible in searchFocused = visible }
+        .navigationDestination(isPresented: $showsTagSettings) {
+            Form {
                 Picker("タグ", selection: $viewModel.tagFilter) {
                     Text("すべてのタグ").tag(TaskTagFilter.all)
                     Text("タグなし").tag(TaskTagFilter.untagged)
                     ForEach(viewModel.availableTags) { tag in Text(tag.name).tag(TaskTagFilter.tag(tag.id)) }
                 }
-            } label: { Label(viewModel.projectFilter == .all ? viewModel.tagFilterLabel : viewModel.projectFilterLabel + "・" + viewModel.tagFilterLabel, systemImage: "tag").lineLimit(1) }
-            Spacer(minLength: 8)
+                .pickerStyle(.inline)
+            }
+            .navigationTitle("タグ設定")
+            .navigationBarTitleDisplayMode(.inline)
+            .themedScreen()
+        }
+        .task { await viewModel.load() }
+    }
+    private var controls: some View {
+        HStack(spacing: 6) {
             Menu {
+                Picker("大分類", selection: $viewModel.area) {
+                    ForEach(PlannerArea.allCases) { Text($0.rawValue).tag($0) }
+                }
+            } label: { filterControlLabel(viewModel.area.rawValue) }
+            Menu {
+                ForEach(PlannerKind.allCases) { value in
+                    Button(value.rawValue) { viewModel.selectKind(value) }
+                }
+            } label: { filterControlLabel("種別: " + viewModel.kind.rawValue) }
+            Menu {
+                ForEach(PlannerStatus.allCases) { value in
+                    Button(value.rawValue) { viewModel.selectStatus(value) }
+                }
+            } label: { filterControlLabel("状態: " + viewModel.status.rawValue) }
+            Menu {
+                Picker("表示対象", selection: $viewModel.selectedSection) {
+                    ForEach(TaskListSection.allCases) { Text($0.rawValue).tag($0) }
+                }
+                Picker("優先度", selection: $viewModel.priorityFilter) {
+                    ForEach(TaskPriorityFilter.allCases) { Text("優先度: " + $0.rawValue).tag($0) }
+                }
+                Picker("プロジェクト", selection: $viewModel.projectFilter) {
+                    Text("すべてのプロジェクト").tag(TaskProjectFilter.all)
+                    Text("プロジェクトなし").tag(TaskProjectFilter.unassigned)
+                    ForEach(viewModel.projects) { Text($0.name).tag(TaskProjectFilter.project($0.id)) }
+                }
                 Toggle("日付ごとにまとめる", isOn: $viewModel.groupsByDay)
                 Picker("並び替え", selection: $viewModel.sortOption) {
                     ForEach(TaskSortOption.allCases) { Text($0.rawValue).tag($0) }
                 }
-            } label: { Label(viewModel.sortOption.rawValue, systemImage: "arrow.up.arrow.down").lineLimit(1) }
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .frame(width: 48, height: 48)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("表示対象・優先度・プロジェクト・並び替え")
         }
-        .font(.caption)
-        .padding(.horizontal, 16)
-        .frame(minHeight: 44)
+        .font(.caption.weight(.medium))
+        .lineLimit(1)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+    }
+    private func filterControlLabel(_ title: String) -> some View {
+        Text(title)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
     }
     private func taskRow(_ task: TaskItem) -> some View {
         HStack(spacing: 8) {

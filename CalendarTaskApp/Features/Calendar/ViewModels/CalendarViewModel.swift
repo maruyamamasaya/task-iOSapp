@@ -42,7 +42,10 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
         settingsStore.$initialCalendarMode.dropFirst().sink { [weak self] value in self?.displayMode = Self.displayMode(for: value) }.store(in: &cancellables)
     }
     var monthDates: [Date] { calendar.monthGridDates(containing: displayedMonth) }
-    var weekDates: [Date] { calendar.weekDates(containing: selectedDate) }
+    var weekDates: [Date] {
+        guard let first = calendar.weekDates(containing: selectedDate).first else { return [] }
+        return (0..<21).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
+    }
     var weekdaySymbols: [String] {
         let symbols = calendar.veryShortStandaloneWeekdaySymbols
         let start = calendar.firstWeekday - 1
@@ -69,13 +72,18 @@ enum CalendarDisplayMode: String, CaseIterable, Identifiable {
         return (eventItems + taskItems).sorted { $0.date < $1.date }
     }
     var weekTitle: String {
-        guard let first = weekDates.first, let last = weekDates.last else { return selectedDate.formatted(.dateTime.year().month()) }
+        guard let first = weekDates.first, let last = weekDates.last else { return selectedDate.formatted(.dateTime.month(.wide)) }
         if calendar.isDate(first, equalTo: last, toGranularity: .month) {
-            return "\(first.formatted(.dateTime.year().month(.wide))) \(first.formatted(.dateTime.day()))–\(last.formatted(.dateTime.day()))"
+            return "\(first.formatted(.dateTime.month(.wide))) \(first.formatted(.dateTime.day()))–\(last.formatted(.dateTime.day()))"
         }
         return "\(first.formatted(.dateTime.month().day())) – \(last.formatted(.dateTime.month().day()))"
     }
-    var dayTitle: String { selectedDate.formatted(.dateTime.year().month(.wide).day().weekday(.wide)) }
+    var dayTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M月d日（E）"
+        return formatter.string(from: selectedDate)
+    }
 
     static func displayMode(for initialMode: InitialCalendarMode) -> CalendarDisplayMode {
         switch initialMode {

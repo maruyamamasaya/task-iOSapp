@@ -10,10 +10,6 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
-                DailyHeader(date: viewModel.selectedDate, isToday: viewModel.isToday,
-                            previous: { Task { await viewModel.moveDay(by: -1) } },
-                            next: { Task { await viewModel.moveDay(by: 1) } },
-                            returnToToday: { Task { await viewModel.returnToToday() } })
                 DailyBriefSection(brief: briefStore.brief, isOutdated: briefStore.isOutdated,
                                   errorMessage: briefStore.errorMessage)
                 HStack {
@@ -45,8 +41,9 @@ struct HomeView: View {
                     .id(Calendar.current.startOfDay(for: viewModel.selectedDate))
             }
             .environment(\.unifiedPlannerPage, true)
-            .themedSurface()
-            .padding(.horizontal, 16).padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 12)
         }
         .safeAreaInset(edge: .bottom) {
             if let task = viewModel.completionUndoTask {
@@ -70,7 +67,7 @@ struct HomeView: View {
             Text("Dotのチャットで、やることと日付を伝えてください。このアプリでは、取り込んだタスクの確認と完了ができます。")
         }
         .themedScreen()
-        .navigationTitle("今日").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(todayTitle).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { AddItemMenu(date: viewModel.selectedDate, route: $editorRoute) } }
         .sheet(item: $editorRoute) { route in
             EditorHostView(route: route, noteForDate: viewModel.note,
@@ -99,6 +96,12 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             dayBoundaryToken = UUID()
         }
+    }
+    private var todayTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M月d日（E）"
+        return formatter.string(from: viewModel.selectedDate)
     }
     private struct BriefRefreshID: Equatable {
         let context: String

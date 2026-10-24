@@ -17,65 +17,37 @@ struct WeekCalendarView: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            WeekHeader(dates: dates, isToday: isToday, isSelected: isSelected,
-                       hasEvent: hasEvent, hasTask: hasTask, projectIDs: projectIDs, select: select)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4, alignment: .topLeading), count: 7), alignment: .leading, spacing: 0) {
-                ForEach(dates, id: \.self) { date in
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(events(date).filter { $0.isAllDay }) { event in
-                            Button { eventActions.edit(event) } label: {
-                                marker(time: nil)
-                            }
-                            .accessibilityLabel("終日予定、\(event.title)")
-                        }
-                        ForEach(tasks(date).filter { $0.isAllDay }) { task in
-                            Button { taskActions.edit(task) } label: {
-                                marker(time: nil)
-                            }
-                            .accessibilityLabel("終日タスク、\(task.title)")
-                        }
-                        ForEach(timedItems(on: date)) { item in
-                            Button {
-                                switch item.source {
-                                case let .event(event): eventActions.edit(event)
-                                case let .task(task): taskActions.edit(task)
-                                }
-                            } label: {
-                                marker(time: item.date)
-                            }
-                            .accessibilityLabel("\(item.date.formatted(date: .omitted, time: .shortened))、\(item.title)")
-                        }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .topLeading)
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(stride(from: 0, to: dates.count, by: 7)), id: \.self) { start in
+                if start > 0 { Divider() }
+                weekRow(Array(dates.dropFirst(start).prefix(7)))
             }
-            .buttonStyle(ThemedPressStyle())
         }
         .themedSurface(padding: 10)
     }
 
-    private func marker(time: Date?) -> some View {
-        HStack(spacing: 2) {
-            Circle().fill(.primary).frame(width: 3, height: 3)
-            Group {
-                if let time {
-                    Text(time, format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
-                } else {
-                    Text("終日")
+    private func weekRow(_ weekDates: [Date]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WeekHeader(dates: weekDates, isToday: isToday, isSelected: isSelected,
+                       hasEvent: hasEvent, hasTask: hasTask, projectIDs: projectIDs, select: select)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 4), count: 7), spacing: 0) {
+                ForEach(weekDates, id: \.self) { date in
+                    let count = events(date).count + tasks(date).count
+                    Button { select(date) } label: {
+                        Text("\(count)件")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(count == 0 ? .secondary : .primary)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("\(date.formatted(.dateTime.month().day()))、予定とタスク\(count)件、日表示を開く")
                 }
             }
-            .font(.system(size: 12, weight: .medium).monospacedDigit())
-            .lineLimit(1)
-            .minimumScaleFactor(0.9)
+            .buttonStyle(ThemedPressStyle())
         }
-        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-        .contentShape(Rectangle())
     }
 
-    private func timedItems(on date: Date) -> [DailyTimelineItem] {
-        timelineItems(date).filter { DailyTimelineItem.isWithinDisplayHours($0.date) }
-    }
 }
 
 private struct WeekHeader: View {

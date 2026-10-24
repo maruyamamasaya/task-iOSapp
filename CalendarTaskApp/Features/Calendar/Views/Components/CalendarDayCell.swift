@@ -17,13 +17,13 @@ struct CalendarDayCell: View {
 
     var body: some View {
         Button(action: select) {
-            VStack(alignment: centersDayNumber ? .center : .leading, spacing: 4) {
+            VStack(alignment: centersDayNumber ? .center : .leading, spacing: centersDayNumber ? 1 : 4) {
                 Text(String(Calendar.current.component(.day, from: date)))
                     .font(.system(.subheadline, design: settings.theme.headingDesign,
                                   weight: isToday || isSelected ? .bold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(dayNumberColor)
-                    .frame(minWidth: 32, minHeight: 32)
+                    .frame(minWidth: centersDayNumber ? 28 : 32, minHeight: centersDayNumber ? 28 : 32)
                     .background {
                         RoundedRectangle(cornerRadius: palette.controlRadius)
                             .fill(isSelected ? palette.accent : .clear)
@@ -41,9 +41,10 @@ struct CalendarDayCell: View {
                         .padding(.leading, centersDayNumber ? 0 : 13)
                 }
             }
-            .padding(.top, 3)
+            .padding(.top, centersDayNumber ? 0 : 3)
             .padding(.leading, centersDayNumber ? 0 : 2)
-            .frame(maxWidth: .infinity, minHeight: showsItemIndicator ? 60 : 36, alignment: centersDayNumber ? .top : .topLeading)
+            .frame(maxWidth: .infinity, minHeight: centersDayNumber ? 0 : (showsItemIndicator ? 60 : 36),
+                   maxHeight: centersDayNumber ? .infinity : nil, alignment: centersDayNumber ? .center : .topLeading)
             .contentShape(Rectangle())
         }
         .buttonStyle(ThemedPressStyle())
